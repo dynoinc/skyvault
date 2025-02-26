@@ -35,7 +35,7 @@ jobs:
         run: go generate ./... && git diff --exit-code
 
       - name: SQLc Generate
-        run: go tool sqlc generate -f ./internal/database/sqlc.yml && git diff --exit-code
+        run: go tool sqlc generate -f ./internal/database/sqlc.yaml && git diff --exit-code
 
       - name: Buf Generate
         run: go tool buf generate --template proto/buf.gen.yaml && git diff --exit-code
