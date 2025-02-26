@@ -1,0 +1,9 @@
+edition = "2023";
+
+package frontend.v1;
+
+option go_package = "github.com/dynoinc/skyvault/gen/proto/frontend/v1";
+
+
+service FrontendService {
+}

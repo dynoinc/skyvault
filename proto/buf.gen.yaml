@@ -1,0 +1,10 @@
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.36.3
+    out: gen
+    opt: 
+      - paths=source_relative
+      - default_api_level=API_OPAQUE
+  - remote: buf.build/connectrpc/go:v1.17.0
+    out: gen
+    opt: paths=source_relative
