@@ -13,9 +13,6 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
-      packages: read
 
     steps:
       - name: Checkout Code
@@ -37,6 +34,12 @@ jobs:
       - name: Go Generate
         run: go generate ./... && git diff --exit-code
 
+      - name: SQLc Generate
+        run: go tool sqlc generate -f ./internal/database/sqlc.yml && git diff --exit-code
+
+      - name: Buf Generate
+        run: go tool buf generate --template proto/buf.gen.yaml && git diff --exit-code
+
       - name: Go Format
         run: go fmt ./... && git diff --exit-code
 
@@ -52,9 +55,6 @@ jobs:
       - name: Go Vulncheck
         run: go tool govulncheck
 
-      - name: SQLc Generate
-        run: go tool sqlc generate -f ./internal/database/sqlc.yml && git diff --exit-code
-
       - name: Go Build
         run: go build ./...
 
@@ -68,7 +68,6 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       packages: read
       security-events: write
 
