@@ -1,0 +1,198 @@
+package batcher
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"path"
+	"time"
+
+	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
+	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/recordio"
+	"github.com/lithammer/shortuuid/v4"
+	"github.com/thanos-io/objstore"
+)
+
+type Config struct {
+	Enabled       bool          `default:"true"`
+	MaxBatchSize  int           `default:"4000"`
+	MaxBatchAge   time.Duration `default:"500ms"`
+	MaxConcurrent int           `default:"4"`
+}
+
+type batch struct {
+	records   []recordio.Record
+	callbacks []chan error
+}
+
+type writeRequest struct {
+	req      *v1.BatchWriteRequest
+	callback chan error
+}
+
+type handler struct {
+	v1.UnimplementedBatcherServiceServer
+
+	config Config
+	ctx    context.Context
+	db     database.Querier
+	store  objstore.Bucket
+
+	// Channel for write requests from clients
+	writes chan writeRequest
+
+	// Channel for batches to be flushed
+	processing chan *batch
+
+	// for graceful shutdown
+	done chan struct{}
+}
+
+func NewHandler(
+	ctx context.Context,
+	cfg Config,
+	db database.Querier,
+	store objstore.Bucket,
+) *handler {
+	h := &handler{
+		config: cfg,
+		ctx:    ctx,
+		db:     db,
+		store:  store,
+
+		processing: make(chan *batch),
+		writes:     make(chan writeRequest),
+		done:       make(chan struct{}),
+	}
+
+	go h.processLoop()
+	go h.batchLoop()
+	return h
+}
+
+func (h *handler) BatchWrite(ctx context.Context, req *v1.BatchWriteRequest) (*v1.BatchWriteResponse, error) {
+	callback := make(chan error, 1)
+	wr := writeRequest{
+		req:      req,
+		callback: callback,
+	}
+
+	// Send write request to the batch manager goroutine
+	select {
+	case h.writes <- wr:
+	case <-h.ctx.Done():
+		return nil, context.Canceled
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	// Wait for processing to complete
+	select {
+	case err := <-callback:
+		if err != nil {
+			return nil, err
+		}
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	return &v1.BatchWriteResponse{}, nil
+}
+
+func (h *handler) batchLoop() {
+	var current *batch
+	var timer <-chan time.Time
+
+	for {
+		select {
+		case wr := <-h.writes:
+			if current == nil {
+				current = &batch{
+					records:   make([]recordio.Record, 0, h.config.MaxBatchSize),
+					callbacks: make([]chan error, 0),
+				}
+				t := time.NewTimer(h.config.MaxBatchAge)
+				timer = t.C
+			}
+
+			current.callbacks = append(current.callbacks, wr.callback)
+			for _, r := range wr.req.GetWrites() {
+				current.records = append(current.records, recordio.Record{
+					Key:       r.GetKey(),
+					Value:     r.GetPut(),
+					Tombstone: r.GetDelete(),
+				})
+			}
+
+			if len(current.records) >= h.config.MaxBatchSize {
+				h.processing <- current
+				current = nil
+				timer = nil
+			}
+
+		case <-timer:
+			h.processing <- current
+			current = nil
+			timer = nil
+
+		case <-h.ctx.Done():
+			close(h.processing)
+			if current != nil {
+				// Fail all pending requests
+				for _, cb := range current.callbacks {
+					cb <- context.Canceled
+				}
+			}
+			return
+		}
+	}
+}
+
+func (h *handler) processLoop() {
+	defer close(h.done)
+
+	for range h.config.MaxConcurrent {
+		go func() {
+			for batch := range h.processing {
+				err := h.writeBatch(h.ctx, batch.records)
+
+				// Notify all waiting clients
+				for _, cb := range batch.callbacks {
+					cb <- err
+				}
+			}
+		}()
+	}
+}
+
+func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) error {
+	// Write records to buffer
+	buf := recordio.WriteRecords(records)
+
+	// Generate a short UUID for the batch
+	id := shortuuid.New()
+
+	// Write batch to object store under l0_batches directory
+	objPath := path.Join("l0_batches", id)
+	if err := h.store.Upload(ctx, objPath, bytes.NewReader(buf)); err != nil {
+		return fmt.Errorf("writing batch to storage: %w", err)
+	}
+
+	// Add record to database
+	if _, err := h.db.AddL0Batch(ctx, id); err != nil {
+		return fmt.Errorf("adding batch record: %w", err)
+	}
+
+	return nil
+}
+
+// Shutdown waits for processing to complete
+func (h *handler) Shutdown(ctx context.Context) error {
+	select {
+	case <-h.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}

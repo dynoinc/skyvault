@@ -1,0 +1,24 @@
+edition = "2023";
+
+package batcher.v1;
+
+option go_package = "github.com/dynoinc/skyvault/gen/proto/batcher/v1";
+
+service BatcherService {
+  rpc BatchWrite(BatchWriteRequest) returns (BatchWriteResponse) {}
+}
+
+message BatchWriteRequest {
+  repeated WriteRequest writes = 1;
+}
+
+message WriteRequest {
+  bytes key = 1;
+
+  oneof operation {
+    bytes put = 2;
+    bool delete = 3;
+  }
+}
+
+message BatchWriteResponse {}

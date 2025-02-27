@@ -1,8 +1,8 @@
 gen:
-        go mod tidy
         go generate ./...
         go tool buf generate --template proto/buf.gen.yaml
         go tool sqlc generate -f ./internal/database/sqlc.yaml
+        go mod tidy
 
 lint: gen
         go fmt ./...
