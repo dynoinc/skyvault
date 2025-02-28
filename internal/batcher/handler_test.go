@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/storage"
@@ -58,14 +59,14 @@ func TestSingleWrite(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, batches)
 
-	_, err = handler.BatchWrite(ctx, v1.BatchWriteRequest_builder{
+	_, err = handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
 		Writes: []*v1.WriteRequest{
 			v1.WriteRequest_builder{
 				Key: []byte("key1"),
 				Put: []byte("value1"),
 			}.Build(),
 		},
-	}.Build())
+	}.Build()))
 	require.NoError(t, err)
 
 	batches, err = db.GetAllL0Batches(ctx)
@@ -80,14 +81,14 @@ func TestBatchBySize(t *testing.T) {
 	errCh := make(chan error, 5)
 	for i := 0; i < 5; i++ {
 		go func() {
-			_, err := handler.BatchWrite(ctx, v1.BatchWriteRequest_builder{
+			_, err := handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
 				Writes: []*v1.WriteRequest{
 					v1.WriteRequest_builder{
 						Key: []byte("key"),
 						Put: []byte("value"),
 					}.Build(),
 				},
-			}.Build())
+			}.Build()))
 			errCh <- err
 		}()
 	}
@@ -107,14 +108,14 @@ func TestGracefulShutdown(t *testing.T) {
 
 	errCh := make(chan error)
 	go func() {
-		_, err := handler.BatchWrite(ctx, v1.BatchWriteRequest_builder{
+		_, err := handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
 			Writes: []*v1.WriteRequest{
 				v1.WriteRequest_builder{
 					Key: []byte("key5"),
 					Put: []byte("value5"),
 				}.Build(),
 			},
-		}.Build())
+		}.Build()))
 		errCh <- err
 	}()
 	require.NoError(t, <-errCh)

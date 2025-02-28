@@ -7,7 +7,9 @@ import (
 	"path"
 	"time"
 
+	"connectrpc.com/connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
+	"github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/recordio"
 	"github.com/lithammer/shortuuid/v4"
@@ -32,7 +34,7 @@ type writeRequest struct {
 }
 
 type handler struct {
-	v1.UnimplementedBatcherServiceServer
+	v1connect.UnimplementedBatcherServiceHandler
 
 	config Config
 	ctx    context.Context
@@ -61,7 +63,7 @@ func NewHandler(
 		db:     db,
 		store:  store,
 
-		processing: make(chan *batch),
+		processing: make(chan *batch, cfg.MaxConcurrent),
 		writes:     make(chan writeRequest),
 		done:       make(chan struct{}),
 	}
@@ -71,10 +73,13 @@ func NewHandler(
 	return h
 }
 
-func (h *handler) BatchWrite(ctx context.Context, req *v1.BatchWriteRequest) (*v1.BatchWriteResponse, error) {
+func (h *handler) BatchWrite(
+	ctx context.Context,
+	req *connect.Request[v1.BatchWriteRequest],
+) (*connect.Response[v1.BatchWriteResponse], error) {
 	callback := make(chan error, 1)
 	wr := writeRequest{
-		req:      req,
+		req:      req.Msg,
 		callback: callback,
 	}
 
@@ -82,22 +87,22 @@ func (h *handler) BatchWrite(ctx context.Context, req *v1.BatchWriteRequest) (*v
 	select {
 	case h.writes <- wr:
 	case <-h.ctx.Done():
-		return nil, context.Canceled
+		return nil, connect.NewError(connect.CodeCanceled, h.ctx.Err())
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, connect.NewError(connect.CodeCanceled, ctx.Err())
 	}
 
 	// Wait for processing to complete
 	select {
 	case err := <-callback:
 		if err != nil {
-			return nil, err
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, connect.NewError(connect.CodeCanceled, ctx.Err())
 	}
 
-	return &v1.BatchWriteResponse{}, nil
+	return connect.NewResponse(&v1.BatchWriteResponse{}), nil
 }
 
 func (h *handler) batchLoop() {

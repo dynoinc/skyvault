@@ -35,7 +35,6 @@ func StartPostgresContainer(ctx context.Context, dbURL string) error {
 	if err != nil {
 		return fmt.Errorf("parsing URL: %w", err)
 	}
-	slog.DebugContext(ctx, "starting PostgreSQL container", "dbURL", dbURL, "user", user, "pass", pass, "host", host, "port", port, "name", name)
 
 	// If postgres is already running, return
 	if checkPostgresReady(ctx, dbURL, 1) == nil {

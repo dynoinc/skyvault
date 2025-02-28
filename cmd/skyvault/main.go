@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	batcherv1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
+	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/batcher"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/storage"
@@ -25,15 +24,14 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 type config struct {
 	DevMode bool `split_words:"true" default:"true"`
 
-	GrpcAddr    string `split_words:"true" default:"127.0.0.1:8080"`
-	HttpAddr    string `split_words:"true" default:"127.0.0.1:8081"`
+	Addr        string `split_words:"true" default:"127.0.0.1:5001"`
 	DatabaseURL string `split_words:"true" default:"postgres://postgres:postgres@127.0.0.1:5431/postgres?sslmode=disable"`
 	StorageURL  string `split_words:"true" default:"filesystem://objstore"`
 
@@ -121,97 +119,58 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Server setup
-	lis, err := net.Listen("tcp", c.GrpcAddr)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to listen for gRPC services", "error", err)
-		os.Exit(1)
-	}
+	// Set up HTTP mux
+	mux := http.NewServeMux()
 
-	// Create shared gRPC server
-	srv := grpc.NewServer()
-
-	// Register services
+	// Register Connect service handlers
 	if c.Batcher.Enabled {
-		batcherSrv := batcher.NewHandler(ctx, c.Batcher, database.New(db), store)
-		batcherv1.RegisterBatcherServiceServer(srv, batcherSrv)
+		batcherHandler := batcher.NewHandler(ctx, c.Batcher, database.New(db), store)
+		path, handler := batcherv1connect.NewBatcherServiceHandler(batcherHandler)
+		mux.Handle(path, handler)
 	}
 
-	// Create errgroup with cancellable context
-	g, gCtx := errgroup.WithContext(ctx)
-
-	// Start gRPC server
-	g.Go(func() error {
-		slog.InfoContext(ctx, "starting gRPC server", "addr", c.GrpcAddr)
-		if err := srv.Serve(lis); err != nil && err != grpc.ErrServerStopped {
-			return fmt.Errorf("failed to serve gRPC: %w", err)
-		}
-
-		return nil
+	// Register HTTP endpoints
+	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)
+	mux.HandleFunc("GET /version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(fmt.Sprintf(`{"version": "%s"}`, versioninfo.Short())))
 	})
 
-	// Start HTTP metrics server
-	g.Go(func() error {
-		mux := http.NewServeMux()
-		mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)
-		mux.HandleFunc("GET /version", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(fmt.Sprintf(`{"version": "%s"}`, versioninfo.Short())))
-		})
-		metricsServer := &http.Server{
-			Addr:    c.HttpAddr,
-			Handler: mux,
-		}
+	// Create server with h2c support for unencrypted HTTP/2
+	server := &http.Server{
+		Addr:    c.Addr,
+		Handler: h2c.NewHandler(mux, &http2.Server{}),
+	}
 
-		slog.InfoContext(ctx, "starting metrics server", "addr", c.HttpAddr)
-		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return fmt.Errorf("failed to serve metrics: %w", err)
-		}
-
-		return nil
-	})
-
-	// Handle shutdown signals
-	g.Go(func() error {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-		select {
-		case sig := <-sigChan:
-			slog.InfoContext(ctx, "received shutdown signal", "signal", sig)
-			cancel()
-		case <-gCtx.Done():
-			slog.InfoContext(ctx, "context cancelled, initiating shutdown")
-		}
-
-		return nil
-	})
-
-	// Start graceful shutdown when any goroutine fails or shutdown is triggered
+	// Start server in a goroutine
 	go func() {
-		<-gCtx.Done()
-
-		// Create separate context for shutdown timeout
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		// Attempt graceful shutdown of gRPC server
-		slog.InfoContext(ctx, "attempting graceful shutdown of gRPC server")
-		go srv.GracefulStop()
-
-		// Wait for shutdown or timeout
-		select {
-		case <-shutdownCtx.Done():
-			slog.WarnContext(ctx, "graceful shutdown timed out, forcing stop")
-			srv.Stop()
-		case <-time.After(100 * time.Millisecond): // Brief pause to allow GracefulStop to complete
-			slog.InfoContext(ctx, "gRPC server shutdown gracefully")
+		slog.InfoContext(ctx, "starting server", "addr", c.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.ErrorContext(ctx, "server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
-	// Wait for all goroutines to complete
-	if err := g.Wait(); err != nil {
-		slog.ErrorContext(ctx, "server error", "error", err)
-		os.Exit(1)
+	// Handle shutdown signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Block until we receive a signal
+	sig := <-sigChan
+	slog.InfoContext(ctx, "received shutdown signal", "signal", sig)
+
+	// Cancel context to notify dependents
+	cancel()
+
+	// Create a timeout context for graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	// Graceful shutdown
+	slog.InfoContext(ctx, "shutting down server")
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.WarnContext(ctx, "server shutdown failed", "error", err)
 	}
+
+	slog.InfoContext(ctx, "shutdown complete")
 }
