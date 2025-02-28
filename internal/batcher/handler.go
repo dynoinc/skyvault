@@ -18,7 +18,7 @@ import (
 
 type Config struct {
 	Enabled       bool          `default:"true"`
-	MaxBatchSize  int           `default:"4000"`
+	MaxBatchBytes int           `default:"4194304"`
 	MaxBatchAge   time.Duration `default:"500ms"`
 	MaxConcurrent int           `default:"4"`
 }
@@ -26,6 +26,7 @@ type Config struct {
 type batch struct {
 	records   []recordio.Record
 	callbacks []chan error
+	totalSize int
 }
 
 type writeRequest struct {
@@ -114,8 +115,9 @@ func (h *handler) batchLoop() {
 		case wr := <-h.writes:
 			if current == nil {
 				current = &batch{
-					records:   make([]recordio.Record, 0, h.config.MaxBatchSize),
+					records:   make([]recordio.Record, 0),
 					callbacks: make([]chan error, 0),
+					totalSize: 0,
 				}
 				t := time.NewTimer(h.config.MaxBatchAge)
 				timer = t.C
@@ -123,23 +125,32 @@ func (h *handler) batchLoop() {
 
 			current.callbacks = append(current.callbacks, wr.callback)
 			for _, r := range wr.req.GetWrites() {
-				current.records = append(current.records, recordio.Record{
+				record := recordio.Record{
 					Key:       r.GetKey(),
 					Value:     r.GetPut(),
 					Tombstone: r.GetDelete(),
-				})
+				}
+
+				current.records = append(current.records, record)
+				recordSize := len(record.Key)
+				if record.Value != nil {
+					recordSize += len(record.Value)
+				}
+				current.totalSize += recordSize
 			}
 
-			if len(current.records) >= h.config.MaxBatchSize {
+			if current.totalSize >= h.config.MaxBatchBytes {
 				h.processing <- current
 				current = nil
 				timer = nil
 			}
 
 		case <-timer:
-			h.processing <- current
-			current = nil
-			timer = nil
+			if current != nil {
+				h.processing <- current
+				current = nil
+				timer = nil
+			}
 
 		case <-h.ctx.Done():
 			close(h.processing)
