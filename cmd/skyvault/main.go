@@ -12,9 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/batcher"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/middleware"
 	"github.com/dynoinc/skyvault/internal/storage"
 	"github.com/earthboundkid/versioninfo/v2"
 	"github.com/joho/godotenv"
@@ -122,10 +124,19 @@ func main() {
 	// Set up HTTP mux
 	mux := http.NewServeMux()
 
+	// Common interceptors for all services
+	interceptors := connect.WithInterceptors(
+		middleware.LogErrors(),
+		// Add any other global interceptors here
+	)
+
 	// Register Connect service handlers
 	if c.Batcher.Enabled {
 		batcherHandler := batcher.NewHandler(ctx, c.Batcher, database.New(db), store)
-		path, handler := batcherv1connect.NewBatcherServiceHandler(batcherHandler)
+		path, handler := batcherv1connect.NewBatcherServiceHandler(
+			batcherHandler,
+			interceptors,
+		)
 		mux.Handle(path, handler)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-kit/log"
@@ -57,7 +58,12 @@ func New(ctx context.Context, bucketURL string) (objstore.Bucket, error) {
 		return bucket, nil
 
 	case "filesystem":
-		return filesystem.NewBucket(u.Path)
+		path := u.Host
+		if u.Path != "" {
+			path = filepath.Join(path, strings.TrimPrefix(u.Path, "/"))
+		}
+
+		return filesystem.NewBucket(path)
 
 	case "inmemory":
 		return objstore.NewInMemBucket(), nil
