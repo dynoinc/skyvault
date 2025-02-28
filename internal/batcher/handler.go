@@ -146,7 +146,7 @@ func (h *handler) batchLoop() {
 			}
 
 		case <-timer:
-			if current != nil {
+			if current != nil && len(current.records) > 0 {
 				h.processing <- current
 				current = nil
 				timer = nil

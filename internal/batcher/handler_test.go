@@ -43,7 +43,8 @@ func newTestHandler(t *testing.T) (*handler, *mockQuerier, objstore.Bucket) {
 	require.NoError(t, err)
 
 	handler := NewHandler(ctx, Config{
-		MaxBatchSize:  4,
+		Enabled:       true,
+		MaxBatchBytes: 20, // Small size for testing
 		MaxBatchAge:   100 * time.Millisecond,
 		MaxConcurrent: 2,
 	}, db, store)
@@ -78,28 +79,35 @@ func TestBatchBySize(t *testing.T) {
 	handler, db, _ := newTestHandler(t)
 	ctx := t.Context()
 
-	errCh := make(chan error, 5)
-	for i := 0; i < 5; i++ {
-		go func() {
-			_, err := handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
-				Writes: []*v1.WriteRequest{
-					v1.WriteRequest_builder{
-						Key: []byte("key"),
-						Put: []byte("value"),
-					}.Build(),
-				},
-			}.Build()))
-			errCh <- err
-		}()
-	}
+	// First request with a record of size 15 bytes
+	_, err := handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
+		Writes: []*v1.WriteRequest{
+			v1.WriteRequest_builder{
+				Key: []byte("key1"),
+				Put: []byte("value12345678"), // 15 bytes total (4 + 11)
+			}.Build(),
+		},
+	}.Build()))
+	require.NoError(t, err)
 
-	for i := 0; i < 5; i++ {
-		require.NoError(t, <-errCh)
-	}
+	// Second request that will push it over the limit (MaxBatchBytes = 20)
+	// This should create a second batch
+	_, err = handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
+		Writes: []*v1.WriteRequest{
+			v1.WriteRequest_builder{
+				Key: []byte("key2"),
+				Put: []byte("value2"), // 10 bytes total (4 + 6)
+			}.Build(),
+		},
+	}.Build()))
+	require.NoError(t, err)
+
+	// Give some time for batches to be processed
+	time.Sleep(150 * time.Millisecond)
 
 	batches, err := db.GetAllL0Batches(ctx)
 	require.NoError(t, err)
-	require.Len(t, batches, 2) // Should create 2 batches (4 + 1 records)
+	require.Len(t, batches, 2, "Expected 2 batches, got %d", len(batches))
 }
 
 func TestGracefulShutdown(t *testing.T) {
