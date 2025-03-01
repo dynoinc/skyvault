@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -22,12 +25,23 @@ import (
 // Configuration options for the stress test
 type config struct {
 	Service     string
-	Target      string
 	Concurrency int
 	Duration    time.Duration
 	KeySize     int
 	ValueSize   int
 	BatchSize   int
+	Namespace   string
+	ServiceName string
+	LocalPort   int
+}
+
+// Service represents a simplified Kubernetes service structure
+type Service struct {
+	Spec struct {
+		Ports []struct {
+			Port int `json:"port"`
+		} `json:"ports"`
+	} `json:"spec"`
 }
 
 // Metrics collected during the test
@@ -82,25 +96,81 @@ func (m *metrics) calculatePercentile(p float64) float64 {
 func main() {
 	cfg := config{}
 	flag.StringVar(&cfg.Service, "service", "batcher", "Service to stress test (batcher)")
-	flag.StringVar(&cfg.Target, "target", "http://localhost:5001", "Target host:port")
 	flag.IntVar(&cfg.Concurrency, "concurrency", 10, "Number of concurrent clients")
 	flag.DurationVar(&cfg.Duration, "duration", 10*time.Second, "Test duration")
 	flag.IntVar(&cfg.KeySize, "key-size", 16, "Size of keys in bytes")
 	flag.IntVar(&cfg.ValueSize, "value-size", 100, "Size of values in bytes")
 	flag.IntVar(&cfg.BatchSize, "batch-size", 10, "Number of keys in each batch")
+	flag.StringVar(&cfg.Namespace, "namespace", "default", "Kubernetes namespace")
+	flag.StringVar(&cfg.ServiceName, "service-name", "skyvault-batcher", "Kubernetes service name")
 	flag.Parse()
 
+	// Discover the service port from Kubernetes
+	servicePort, err := getK8sServicePort(cfg.Namespace, cfg.ServiceName)
+	if err != nil {
+		log.Fatalf("Failed to discover service port: %v", err)
+	}
+
+	fmt.Printf("Discovered Kubernetes service port: %d\n", servicePort)
+	cfg.LocalPort = servicePort
+
+	// Setup port-forwarding to Kubernetes
+	fmt.Printf("Setting up port-forwarding to %s.%s on local port %d\n",
+		cfg.ServiceName, cfg.Namespace, cfg.LocalPort)
+
+	// Define target URL
+	target := fmt.Sprintf("http://localhost:%d", cfg.LocalPort)
+
+	// Start port-forwarding
+	portForwardCmd := exec.Command("kubectl", "port-forward",
+		fmt.Sprintf("service/%s", cfg.ServiceName),
+		fmt.Sprintf("%d:%d", cfg.LocalPort, servicePort),
+		"-n", cfg.Namespace)
+
+	portForwardCmd.Stdout = io.Discard
+	portForwardCmd.Stderr = os.Stderr
+
+	err = portForwardCmd.Start()
+	if err != nil {
+		log.Fatalf("Failed to start port-forwarding: %v", err)
+	}
+
+	// Create base context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Try simple HTTP connection to check if service is ready
+	fmt.Println("Waiting for service to be ready...")
+	for i := 0; i < 10; i++ {
+		client := &http.Client{Timeout: time.Second}
+		req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+		_, err := client.Do(req)
+		if err == nil {
+			fmt.Println("Service is available")
+			break
+		}
+		if i == 9 {
+			log.Printf("Warning: Service connection check failed after multiple attempts: %v", err)
+			log.Println("Continuing anyway, but expect possible connection issues...")
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	defer func() {
+		if portForwardCmd.Process != nil {
+			fmt.Println("Stopping port-forwarding...")
+			portForwardCmd.Process.Signal(os.Interrupt)
+			portForwardCmd.Wait()
+		}
+	}()
+
 	// Print test configuration
-	fmt.Printf("Stress testing %s at %s\n", cfg.Service, cfg.Target)
+	fmt.Printf("Stress testing %s at %s\n", cfg.Service, target)
 	fmt.Printf("Concurrency: %d, Duration: %s\n", cfg.Concurrency, cfg.Duration)
 	fmt.Printf("Key size: %d bytes, Value size: %d bytes, Batch size: %d\n",
 		cfg.KeySize, cfg.ValueSize, cfg.BatchSize)
 	fmt.Println("Press Ctrl+C to stop the test early")
 	fmt.Println()
-
-	// Setup context with cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Handle SIGINT (Ctrl+C)
 	sigChan := make(chan os.Signal, 1)
@@ -118,7 +188,7 @@ func main() {
 	// Run the test
 	switch cfg.Service {
 	case "batcher":
-		stressBatcher(ctx, cfg, m)
+		stressBatcher(ctx, cfg, target, m)
 	default:
 		log.Fatalf("Unknown service: %s", cfg.Service)
 	}
@@ -129,10 +199,37 @@ func main() {
 	printResults(m)
 }
 
-func stressBatcher(ctx context.Context, cfg config, m *metrics) {
+// getK8sServicePort retrieves the port for a Kubernetes service
+func getK8sServicePort(namespace, serviceName string) (int, error) {
+	// Use kubectl to get the service information in JSON format
+	cmd := exec.Command("kubectl", "get", "service", serviceName, "-n", namespace, "-o", "json")
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return 0, fmt.Errorf("kubectl error: %s: %s", err, exitErr.Stderr)
+		}
+		return 0, fmt.Errorf("failed to execute kubectl: %v", err)
+	}
+
+	// Parse the JSON output
+	var service Service
+	if err := json.Unmarshal(output, &service); err != nil {
+		return 0, fmt.Errorf("failed to parse kubectl output: %v", err)
+	}
+
+	// Extract the port
+	if len(service.Spec.Ports) == 0 {
+		return 0, fmt.Errorf("no ports found for service %s", serviceName)
+	}
+
+	// Return the first port
+	return service.Spec.Ports[0].Port, nil
+}
+
+func stressBatcher(ctx context.Context, cfg config, target string, m *metrics) {
 	client := v1connect.NewBatcherServiceClient(
 		http.DefaultClient,
-		cfg.Target,
+		target,
 	)
 
 	// Generate test data

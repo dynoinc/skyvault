@@ -49,3 +49,31 @@ k8s-reset:
 k8s-logs:
     # Tail logs for all components (batcher, index, and cache)
     kubectl logs -f -l "app.kubernetes.io/component in (batcher,index,cache)" --max-log-requests 1000
+
+# Run stress test against the Kubernetes-deployed batcher service
+k8s-stress:
+    #!/usr/bin/env sh
+    set -e
+    
+    # Build the stress binary
+    echo "Building stress binary..."
+    go build -o ./bin/stress ./cmd/stress
+    
+    # Default parameters - can be overridden with env vars
+    CONCURRENCY=${CONCURRENCY:-10}
+    DURATION=${DURATION:-10s}
+    KEY_SIZE=${KEY_SIZE:-16}
+    VALUE_SIZE=${VALUE_SIZE:-100}
+    BATCH_SIZE=${BATCH_SIZE:-10}
+    NAMESPACE=${NAMESPACE:-default}
+    SERVICE_NAME=${SERVICE_NAME:-skyvault-batcher}
+    
+    echo "Running stress test against Kubernetes batcher service..."
+    ./bin/stress \
+      --namespace="$NAMESPACE" \
+      --service-name="$SERVICE_NAME" \
+      --concurrency="$CONCURRENCY" \
+      --duration="$DURATION" \
+      --key-size="$KEY_SIZE" \
+      --value-size="$VALUE_SIZE" \
+      --batch-size="$BATCH_SIZE"
