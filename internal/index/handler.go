@@ -200,11 +200,11 @@ func (h *handler) addCacheServiceLocked(endpoint string) {
 // Get retrieves values for requested keys by checking all l0_batches
 func (h *handler) Get(
 	ctx context.Context,
-	req *connect.Request[v1.GetRequest],
-) (*connect.Response[v1.GetResponse], error) {
+	req *connect.Request[v1.BatchGetRequest],
+) (*connect.Response[v1.BatchGetResponse], error) {
 	keys := req.Msg.GetKeys()
 	if len(keys) == 0 {
-		return connect.NewResponse(&v1.GetResponse{}), nil
+		return connect.NewResponse(&v1.BatchGetResponse{}), nil
 	}
 
 	// Get all l0 batches from the database
@@ -337,7 +337,7 @@ func (h *handler) Get(
 	}
 
 	// Create the response
-	resp := &v1.GetResponse{}
+	resp := &v1.BatchGetResponse{}
 	resp.SetResults(results)
 
 	return connect.NewResponse(resp), nil

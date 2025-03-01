@@ -69,7 +69,7 @@ func TestHandler_Get(t *testing.T) {
 		}, nil)
 
 	// Create a test request
-	req := connect.NewRequest(&v1.GetRequest{})
+	req := connect.NewRequest(&v1.BatchGetRequest{})
 	req.Msg.SetKeys([]string{"test-key"})
 
 	// Define what the mock cache client should return
@@ -147,7 +147,7 @@ func TestValuePrecedence(t *testing.T) {
 	}
 
 	// Setup request with a key to look up
-	req := connect.NewRequest(&v1.GetRequest{})
+	req := connect.NewRequest(&v1.BatchGetRequest{})
 	req.Msg.SetKeys([]string{"key1"})
 
 	// Setup mock responses for batch1
@@ -204,13 +204,15 @@ func TestEmptyKeyRequest(t *testing.T) {
 	}
 
 	// Setup request with no keys
-	req := connect.NewRequest(&v1.GetRequest{})
+	req := connect.NewRequest(&v1.BatchGetRequest{})
 	req.Msg.SetKeys([]string{})
 
 	// Call the handler
-	_, err := h.Get(ctx, req)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "at least one key is required")
+	resp, err := h.Get(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Msg)
+	assert.Empty(t, resp.Msg.GetResults(), "Expected empty results for empty keys request")
 }
 
 func TestDatabaseError(t *testing.T) {
@@ -243,7 +245,7 @@ func TestDatabaseError(t *testing.T) {
 	}
 
 	// Setup request
-	req := connect.NewRequest(&v1.GetRequest{})
+	req := connect.NewRequest(&v1.BatchGetRequest{})
 	req.Msg.SetKeys([]string{"key1"})
 
 	// Call the handler
@@ -303,7 +305,7 @@ func TestCacheServiceError(t *testing.T) {
 	}
 
 	// Setup request
-	req := connect.NewRequest(&v1.GetRequest{})
+	req := connect.NewRequest(&v1.BatchGetRequest{})
 	req.Msg.SetKeys([]string{"key1"})
 
 	// Call the handler
@@ -365,7 +367,7 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	}
 
 	// Setup request with keys to look up
-	req := connect.NewRequest(&v1.GetRequest{})
+	req := connect.NewRequest(&v1.BatchGetRequest{})
 	req.Msg.SetKeys([]string{
 		"key1", // Will be deleted in batch3 (newest)
 		"key2", // Will have value in batch2 and different value in batch1

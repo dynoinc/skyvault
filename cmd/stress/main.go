@@ -649,12 +649,12 @@ func stressIndex(ctx context.Context, cfg config, target string, m *metrics, act
 						}
 					}
 
-					req := indexv1.GetRequest_builder{
+					req := indexv1.BatchGetRequest_builder{
 						Keys: keys,
 					}.Build()
 
 					start := time.Now()
-					resp, err := client.Get(ctx, connect.NewRequest(req))
+					resp, err := client.BatchGet(ctx, connect.NewRequest(req))
 					latency := time.Since(start).Seconds() * 1000 // convert to ms
 
 					if err != nil {

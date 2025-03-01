@@ -33,13 +33,13 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// IndexServiceGetProcedure is the fully-qualified name of the IndexService's Get RPC.
-	IndexServiceGetProcedure = "/index.v1.IndexService/Get"
+	// IndexServiceBatchGetProcedure is the fully-qualified name of the IndexService's BatchGet RPC.
+	IndexServiceBatchGetProcedure = "/index.v1.IndexService/BatchGet"
 )
 
 // IndexServiceClient is a client for the index.v1.IndexService service.
 type IndexServiceClient interface {
-	Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error)
+	BatchGet(context.Context, *connect.Request[v1.BatchGetRequest]) (*connect.Response[v1.BatchGetResponse], error)
 }
 
 // NewIndexServiceClient constructs a client for the index.v1.IndexService service. By default, it
@@ -53,10 +53,10 @@ func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	indexServiceMethods := v1.File_proto_index_v1_service_proto.Services().ByName("IndexService").Methods()
 	return &indexServiceClient{
-		get: connect.NewClient[v1.GetRequest, v1.GetResponse](
+		batchGet: connect.NewClient[v1.BatchGetRequest, v1.BatchGetResponse](
 			httpClient,
-			baseURL+IndexServiceGetProcedure,
-			connect.WithSchema(indexServiceMethods.ByName("Get")),
+			baseURL+IndexServiceBatchGetProcedure,
+			connect.WithSchema(indexServiceMethods.ByName("BatchGet")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -64,17 +64,17 @@ func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // indexServiceClient implements IndexServiceClient.
 type indexServiceClient struct {
-	get *connect.Client[v1.GetRequest, v1.GetResponse]
+	batchGet *connect.Client[v1.BatchGetRequest, v1.BatchGetResponse]
 }
 
-// Get calls index.v1.IndexService.Get.
-func (c *indexServiceClient) Get(ctx context.Context, req *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error) {
-	return c.get.CallUnary(ctx, req)
+// BatchGet calls index.v1.IndexService.BatchGet.
+func (c *indexServiceClient) BatchGet(ctx context.Context, req *connect.Request[v1.BatchGetRequest]) (*connect.Response[v1.BatchGetResponse], error) {
+	return c.batchGet.CallUnary(ctx, req)
 }
 
 // IndexServiceHandler is an implementation of the index.v1.IndexService service.
 type IndexServiceHandler interface {
-	Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error)
+	BatchGet(context.Context, *connect.Request[v1.BatchGetRequest]) (*connect.Response[v1.BatchGetResponse], error)
 }
 
 // NewIndexServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -84,16 +84,16 @@ type IndexServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewIndexServiceHandler(svc IndexServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	indexServiceMethods := v1.File_proto_index_v1_service_proto.Services().ByName("IndexService").Methods()
-	indexServiceGetHandler := connect.NewUnaryHandler(
-		IndexServiceGetProcedure,
-		svc.Get,
-		connect.WithSchema(indexServiceMethods.ByName("Get")),
+	indexServiceBatchGetHandler := connect.NewUnaryHandler(
+		IndexServiceBatchGetProcedure,
+		svc.BatchGet,
+		connect.WithSchema(indexServiceMethods.ByName("BatchGet")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/index.v1.IndexService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case IndexServiceGetProcedure:
-			indexServiceGetHandler.ServeHTTP(w, r)
+		case IndexServiceBatchGetProcedure:
+			indexServiceBatchGetHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -103,6 +103,6 @@ func NewIndexServiceHandler(svc IndexServiceHandler, opts ...connect.HandlerOpti
 // UnimplementedIndexServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedIndexServiceHandler struct{}
 
-func (UnimplementedIndexServiceHandler) Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("index.v1.IndexService.Get is not implemented"))
+func (UnimplementedIndexServiceHandler) BatchGet(context.Context, *connect.Request[v1.BatchGetRequest]) (*connect.Response[v1.BatchGetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("index.v1.IndexService.BatchGet is not implemented"))
 }

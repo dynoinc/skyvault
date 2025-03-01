@@ -5,14 +5,14 @@ package index.v1;
 option go_package = "github.com/dynoinc/skyvault/gen/proto/index/v1";
 
 service IndexService {
-  rpc Get(GetRequest) returns (GetResponse) {}
+  rpc BatchGet(BatchGetRequest) returns (BatchGetResponse) {}
 }
 
-message GetRequest {
+message BatchGetRequest {
   repeated string keys = 1;
 }
 
-message GetResponse {
+message BatchGetResponse {
   repeated Result results = 1;
 }
 
