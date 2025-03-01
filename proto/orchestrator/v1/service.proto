@@ -1,0 +1,10 @@
+edition = "2023";
+
+package orchestrator.v1;
+
+option go_package = "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1";
+
+service OrchestratorService {
+  // TODO: Add methods to the orchestrator service
+  // This service will be responsible for coordinating operations between other services
+}

@@ -114,6 +114,20 @@ index:
       memory: "256Mi"
       cpu: "200m"
 
+# Orchestrator service configuration
+orchestrator:
+  enabled: true
+  replicas: 1  # Running as a singleton instance
+  port: 5004
+  # Use smaller resource requests for Minikube
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
 # Service configuration - Use NodePort for easier access in Minikube
 service:
   type: NodePort

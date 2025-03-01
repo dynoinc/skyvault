@@ -18,11 +18,13 @@ import (
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	indexv1connect "github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
+	orchestratorv1connect "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/batcher"
 	"github.com/dynoinc/skyvault/internal/cache"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/index"
 	"github.com/dynoinc/skyvault/internal/middleware"
+	"github.com/dynoinc/skyvault/internal/orchestrator"
 	"github.com/dynoinc/skyvault/internal/storage"
 	"github.com/earthboundkid/versioninfo/v2"
 	"github.com/joho/godotenv"
@@ -41,9 +43,10 @@ type config struct {
 	DatabaseURL string `split_words:"true" default:"postgres://postgres:postgres@127.0.0.1:5431/postgres?sslmode=disable"`
 	StorageURL  string `split_words:"true" default:"filesystem://objstore"`
 
-	Batcher batcher.Config
-	Cache   cache.Config
-	Index   index.Config
+	Batcher      batcher.Config
+	Cache        cache.Config
+	Index        index.Config
+	Orchestrator orchestrator.Config
 }
 
 func main() {
@@ -179,6 +182,19 @@ func main() {
 		slog.InfoContext(ctx, "IndexService enabled and healthy", "service", indexv1connect.IndexServiceName)
 	}
 
+	if c.Orchestrator.Enabled {
+		orchestratorHandler := orchestrator.NewHandler(ctx, c.Orchestrator)
+		path, handler := orchestratorv1connect.NewOrchestratorServiceHandler(
+			orchestratorHandler,
+			interceptors,
+		)
+		mux.Handle(path, handler)
+
+		// Set health status for OrchestratorService
+		healthSvc.SetStatus(orchestratorv1connect.OrchestratorServiceName, grpchealth.StatusServing)
+		slog.InfoContext(ctx, "OrchestratorService enabled and healthy", "service", orchestratorv1connect.OrchestratorServiceName)
+	}
+
 	// Set the overall service status
 	healthSvc.SetStatus("", grpchealth.StatusServing)
 
@@ -192,6 +208,7 @@ func main() {
 		batcherv1connect.BatcherServiceName,
 		cachev1connect.CacheServiceName,
 		indexv1connect.IndexServiceName,
+		orchestratorv1connect.OrchestratorServiceName,
 	)
 	reflectPath, reflectHandler := grpcreflect.NewHandlerV1(reflector)
 	mux.Handle(reflectPath, reflectHandler)

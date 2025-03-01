@@ -1,0 +1,79 @@
+{{- if .Values.orchestrator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "skyvault.fullname" . }}-orchestrator
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: orchestrator
+spec:
+  replicas: {{ .Values.orchestrator.replicas }}
+  selector:
+    matchLabels:
+      {{- include "skyvault.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: orchestrator
+  template:
+    metadata:
+      labels:
+        {{- include "skyvault.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: orchestrator
+    spec:
+      serviceAccountName: {{ include "skyvault.fullname" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: skyvault
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/skyvault", "--debug"]
+          ports:
+            - containerPort: {{ .Values.orchestrator.port }}
+              protocol: TCP
+          env:
+            - name: SKYVAULT_ADDR
+              value: "0.0.0.0:{{ .Values.orchestrator.port }}"
+            - name: SKYVAULT_DATABASE_URL
+              value: "{{ .Values.database.url }}"
+            - name: SKYVAULT_STORAGE_URL
+              value: "{{ .Values.storage.url }}"
+            - name: SKYVAULT_ORCHESTRATOR_ENABLED
+              value: "true"
+            {{- if eq .Values.storage.type "s3" }}
+            - name: AWS_ACCESS_KEY_ID
+              value: "{{ .Values.storage.s3.access_key }}"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "{{ .Values.storage.s3.secret_key }}"
+            - name: AWS_REGION
+              value: "{{ .Values.storage.s3.region }}"
+            - name: S3_ENDPOINT
+              value: "{{ .Values.storage.s3.endpoint }}"
+            - name: S3_USE_SSL
+              value: "{{ .Values.storage.s3.secure }}"
+            - name: S3_BUCKET_NAME
+              value: "{{ .Values.storage.s3.bucket }}"
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /version
+              port: {{ .Values.orchestrator.port }}
+          readinessProbe:
+            httpGet:
+              path: /version
+              port: {{ .Values.orchestrator.port }}
+          resources:
+            {{- toYaml .Values.orchestrator.resources | nindent 12 }}
+          {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
+          volumeMounts:
+            - name: source-code
+              mountPath: /app/src
+          {{- end }}
+      {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
+      volumes:
+        - name: source-code
+          hostPath:
+            path: {{ .Values.development.sourceCodeMount.hostPath }}
+            type: Directory
+      {{- end }}
+{{- end }} 
