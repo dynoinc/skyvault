@@ -23,8 +23,12 @@ k8s-dev:
     # Build a minimal Docker image with just the binary
     docker build --no-cache -t skyvault:dev -f Dockerfile.dev .
     
-    # Load the image into Minikube
-    minikube image load --overwrite=true skyvault:dev 
+    # Save the Docker image to a tar file
+    docker save skyvault:dev -o ./bin/skyvault-dev.tar
+    
+    # Copy the tar file to Minikube VM and load it using ssh
+    minikube cp ./bin/skyvault-dev.tar /tmp/skyvault-dev.tar
+    minikube ssh "docker load < /tmp/skyvault-dev.tar"
     
     # Deploy with dev settings using the minimal image
     helm upgrade --install skyvault ./helm/skyvault \
