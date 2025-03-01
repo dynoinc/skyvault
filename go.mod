@@ -194,7 +194,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/sqlc-dev/sqlc v1.28.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tetratelabs/wazero v1.8.2 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
