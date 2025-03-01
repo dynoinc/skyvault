@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
+	"connectrpc.com/grpcreflect"
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	indexv1connect "github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
@@ -185,6 +186,18 @@ func main() {
 	healthPath, healthHandler := grpchealth.NewHandler(healthSvc)
 	mux.Handle(healthPath, healthHandler)
 	slog.InfoContext(ctx, "gRPC health check service initialized", "path", healthPath)
+
+	// Register gRPC reflection service
+	reflector := grpcreflect.NewStaticReflector(
+		batcherv1connect.BatcherServiceName,
+		cachev1connect.CacheServiceName,
+		indexv1connect.IndexServiceName,
+	)
+	reflectPath, reflectHandler := grpcreflect.NewHandlerV1(reflector)
+	mux.Handle(reflectPath, reflectHandler)
+	reflectPathV1Alpha, reflectHandlerV1Alpha := grpcreflect.NewHandlerV1Alpha(reflector)
+	mux.Handle(reflectPathV1Alpha, reflectHandlerV1Alpha)
+	slog.InfoContext(ctx, "gRPC reflection service initialized", "path_v1", reflectPath, "path_v1alpha", reflectPathV1Alpha)
 
 	// Register HTTP endpoints
 	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)

@@ -7,7 +7,7 @@ metadata:
     {{- include "skyvault.labels" . | nindent 4 }}
     app.kubernetes.io/component: index
 spec:
-  type: ClusterIP
+  type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.index.port }}
       targetPort: {{ .Values.index.port }}

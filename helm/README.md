@@ -348,4 +348,43 @@ To stop Minikube when you're done:
 
 ```bash
 minikube stop
-``` 
+```
+
+## Features
+
+### gRPC Server Reflection
+
+SkyVault now includes gRPC server reflection support, making it easier to interact with the services using tools like [grpcurl](https://github.com/fullstorydev/grpcurl) and [grpcui](https://github.com/fullstorydev/grpcui).
+
+To use these tools with a Minikube deployment:
+
+#### Using grpcurl
+
+Forward the service port:
+
+```bash
+kubectl port-forward svc/skyvault-batcher 5001:80
+```
+
+In another terminal, use grpcurl:
+
+```bash
+# List all available services
+grpcurl -plaintext localhost:5001 list
+
+# Describe a specific service
+grpcurl -plaintext localhost:5001 describe batcher.v1.BatcherService
+
+# Call a method
+grpcurl -plaintext -d '{"key": "example-key"}' localhost:5001 batcher.v1.BatcherService/Get
+```
+
+#### Using grpcui
+
+Forward the service port as above, then start the interactive web UI:
+
+```bash
+grpcui -plaintext localhost:5001
+```
+
+This will open a browser window with a UI for interacting with all SkyVault services. 
