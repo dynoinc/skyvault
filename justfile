@@ -21,10 +21,10 @@ k8s-dev:
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/skyvault ./cmd/skyvault
     
     # Build a minimal Docker image with just the binary
-    docker build -t skyvault:dev -f Dockerfile.dev .
+    docker build --no-cache -t skyvault:dev -f Dockerfile.dev .
     
     # Load the image into Minikube
-    minikube image load skyvault:dev
+    minikube image load --overwrite=true skyvault:dev 
     
     # Deploy with dev settings using the minimal image
     helm upgrade --install skyvault ./helm/skyvault \

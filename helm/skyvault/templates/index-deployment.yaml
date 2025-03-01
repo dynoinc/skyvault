@@ -18,6 +18,7 @@ spec:
         {{- include "skyvault.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: index
     spec:
+      serviceAccountName: {{ include "skyvault.fullname" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
