@@ -32,8 +32,10 @@ k8s-dev:
         --set image.repository=skyvault \
         --set image.tag=dev
     
-    # Restart the deployment to pick up changes
+    # Restart the deployments to pick up changes
     kubectl rollout restart deployment/skyvault-batcher
+    kubectl rollout restart deployment/skyvault-cache
+    kubectl rollout restart deployment/skyvault-index
     
     # Show running pods
     kubectl get pods
