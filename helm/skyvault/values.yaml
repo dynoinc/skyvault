@@ -3,9 +3,9 @@
 
 # Common image settings
 image:
-  repository: skyvault
-  pullPolicy: IfNotPresent  # Changed from Never to IfNotPresent to allow pulling images when needed
-  tag: "latest"
+  repository: docker.io/library/skyvault
+  pullPolicy: IfNotPresent
+  tag: "dev"
 
 # Development mode settings for faster iteration
 development:

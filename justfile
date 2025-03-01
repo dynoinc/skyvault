@@ -28,9 +28,7 @@ k8s-dev:
     
     # Deploy with dev settings using the minimal image
     helm upgrade --install skyvault ./helm/skyvault \
-        --values ./helm/skyvault/values.yaml \
-        --set image.repository=skyvault \
-        --set image.tag=dev
+        --values ./helm/skyvault/values.yaml
     
     # Restart the deployments to pick up changes
     kubectl rollout restart deployment/skyvault-batcher
