@@ -1,0 +1,19 @@
+edition = "2023";
+
+package cache.v1;
+
+option go_package = "github.com/dynoinc/skyvault/gen/proto/cache/v1";
+
+service CacheService {
+  rpc Get(GetRequest) returns (GetResponse) {}
+}
+
+message GetRequest {
+  string object_path = 1;
+  repeated bytes keys = 2;
+}
+
+message GetResponse {
+  repeated bytes keys = 1;
+  repeated bytes values = 2;
+}

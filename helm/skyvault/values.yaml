@@ -85,6 +85,21 @@ batcher:
       memory: "256Mi"
       cpu: "200m"
 
+# Cache service configuration
+cache:
+  enabled: true
+  replicas: 2
+  port: 5002
+  maxSizeBytes: 67108864  # 64MB cache size
+  # Use smaller resource requests for Minikube
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
 # Service configuration - Use NodePort for easier access in Minikube
 service:
   type: NodePort

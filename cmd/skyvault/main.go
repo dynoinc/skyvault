@@ -14,7 +14,9 @@ import (
 
 	"connectrpc.com/connect"
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
+	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/batcher"
+	"github.com/dynoinc/skyvault/internal/cache"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/middleware"
 	"github.com/dynoinc/skyvault/internal/storage"
@@ -36,6 +38,7 @@ type config struct {
 	StorageURL  string `split_words:"true" default:"filesystem://objstore"`
 
 	Batcher batcher.Config
+	Cache   cache.Config
 }
 
 func main() {
@@ -128,6 +131,15 @@ func main() {
 		batcherHandler := batcher.NewHandler(ctx, c.Batcher, database.New(db), store)
 		path, handler := batcherv1connect.NewBatcherServiceHandler(
 			batcherHandler,
+			interceptors,
+		)
+		mux.Handle(path, handler)
+	}
+
+	if c.Cache.Enabled {
+		cacheHandler := cache.NewHandler(ctx, c.Cache, store)
+		path, handler := cachev1connect.NewCacheServiceHandler(
+			cacheHandler,
 			interceptors,
 		)
 		mux.Handle(path, handler)
