@@ -186,7 +186,12 @@ func main() {
 	}
 
 	if c.Orchestrator.Enabled {
-		orchestratorHandler := orchestrator.NewHandler(ctx, c.Orchestrator)
+		orchestratorHandler, err := orchestrator.NewHandler(ctx, c.Orchestrator, db)
+		if err != nil {
+			slog.ErrorContext(ctx, "setting up orchestrator", "error", err)
+			os.Exit(1)
+		}
+
 		path, handler := orchestratorv1connect.NewOrchestratorServiceHandler(
 			orchestratorHandler,
 			interceptors,
@@ -199,7 +204,12 @@ func main() {
 	}
 
 	if c.Worker.Enabled {
-		workerHandler := worker.NewHandler(ctx, c.Worker)
+		workerHandler, err := worker.NewHandler(ctx, c.Worker, db)
+		if err != nil {
+			slog.ErrorContext(ctx, "setting up worker", "error", err)
+			os.Exit(1)
+		}
+
 		path, handler := workerv1connect.NewWorkerServiceHandler(
 			workerHandler,
 			interceptors,
@@ -229,9 +239,7 @@ func main() {
 	)
 	reflectPath, reflectHandler := grpcreflect.NewHandlerV1(reflector)
 	mux.Handle(reflectPath, reflectHandler)
-	reflectPathV1Alpha, reflectHandlerV1Alpha := grpcreflect.NewHandlerV1Alpha(reflector)
-	mux.Handle(reflectPathV1Alpha, reflectHandlerV1Alpha)
-	slog.InfoContext(ctx, "gRPC reflection service initialized", "path_v1", reflectPath, "path_v1alpha", reflectPathV1Alpha)
+	slog.InfoContext(ctx, "gRPC reflection service initialized", "path_v1", reflectPath)
 
 	// Register HTTP endpoints
 	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)
