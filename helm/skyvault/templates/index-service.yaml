@@ -1,0 +1,19 @@
+{{- if .Values.index.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "skyvault.fullname" . }}-index
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: index
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.index.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "skyvault.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: index
+{{- end }} 

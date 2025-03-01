@@ -15,9 +15,11 @@ import (
 	"connectrpc.com/connect"
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
+	indexv1connect "github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/batcher"
 	"github.com/dynoinc/skyvault/internal/cache"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/index"
 	"github.com/dynoinc/skyvault/internal/middleware"
 	"github.com/dynoinc/skyvault/internal/storage"
 	"github.com/earthboundkid/versioninfo/v2"
@@ -39,6 +41,7 @@ type config struct {
 
 	Batcher batcher.Config
 	Cache   cache.Config
+	Index   index.Config
 }
 
 func main() {
@@ -140,6 +143,20 @@ func main() {
 		cacheHandler := cache.NewHandler(ctx, c.Cache, store)
 		path, handler := cachev1connect.NewCacheServiceHandler(
 			cacheHandler,
+			interceptors,
+		)
+		mux.Handle(path, handler)
+	}
+
+	if c.Index.Enabled {
+		indexHandler, err := index.NewHandler(ctx, c.Index, database.New(db))
+		if err != nil {
+			slog.ErrorContext(ctx, "setting up index", "error", err)
+			os.Exit(1)
+		}
+
+		path, handler := indexv1connect.NewIndexServiceHandler(
+			indexHandler,
 			interceptors,
 		)
 		mux.Handle(path, handler)

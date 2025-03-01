@@ -100,6 +100,20 @@ cache:
       memory: "256Mi"
       cpu: "200m"
 
+# Index service configuration
+index:
+  enabled: true
+  replicas: 2
+  port: 5003
+  # Use smaller resource requests for Minikube
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
 # Service configuration - Use NodePort for easier access in Minikube
 service:
   type: NodePort

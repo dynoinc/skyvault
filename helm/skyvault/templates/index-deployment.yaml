@@ -1,0 +1,87 @@
+{{- if .Values.index.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "skyvault.fullname" . }}-index
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: index
+spec:
+  replicas: {{ .Values.index.replicas }}
+  selector:
+    matchLabels:
+      {{- include "skyvault.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: index
+  template:
+    metadata:
+      labels:
+        {{- include "skyvault.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: index
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: skyvault
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/skyvault", "--debug"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.index.port }}
+              protocol: TCP
+          env:
+            - name: SKYVAULT_ADDR
+              value: "0.0.0.0:{{ .Values.index.port }}"
+            - name: SKYVAULT_DATABASE_URL
+              value: "{{ .Values.database.url }}"
+            - name: SKYVAULT_STORAGE_URL
+              value: "{{ .Values.storage.url }}"
+            - name: SKYVAULT_INDEX_ENABLED
+              value: "true"
+            - name: SKYVAULT_INDEX_CACHE_SERVICE
+              value: "{{ include "skyvault.fullname" . }}-cache:{{ .Values.cache.port }}"
+            - name: SKYVAULT_INDEX_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SKYVAULT_INDEX_REFRESH_RATE
+              value: "30s"
+            {{- if eq .Values.storage.type "s3" }}
+            - name: AWS_ACCESS_KEY_ID
+              value: "{{ .Values.storage.s3.access_key }}"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "{{ .Values.storage.s3.secret_key }}"
+            - name: AWS_REGION
+              value: "{{ .Values.storage.s3.region }}"
+            - name: S3_ENDPOINT
+              value: "{{ .Values.storage.s3.endpoint }}"
+            - name: S3_USE_SSL
+              value: "{{ .Values.storage.s3.secure }}"
+            - name: S3_BUCKET_NAME
+              value: "{{ .Values.storage.s3.bucket }}"
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /version
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /version
+              port: http
+          resources:
+            {{- toYaml .Values.index.resources | nindent 12 }}
+          {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
+          volumeMounts:
+            - name: source-code
+              mountPath: /app/src
+          {{- end }}
+      {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
+      volumes:
+        - name: source-code
+          hostPath:
+            path: {{ .Values.development.sourceCodeMount.hostPath }}
+            type: Directory
+      {{- end }}
+{{- end }} 
