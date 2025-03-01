@@ -1,0 +1,92 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "skyvault.fullname" . }}-worker
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      {{- include "skyvault.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "skyvault.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.worker.port }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "skyvault.serviceAccountName" . }}
+      containers:
+        - name: worker
+          {{- if .Values.development.enabled }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}"
+          {{- else }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /skyvault
+          env:
+            - name: SKYVAULT_ADDR
+              value: "0.0.0.0:{{ .Values.worker.port }}"
+            - name: SKYVAULT_DATABASE_URL
+              value: {{ .Values.database.url | quote }}
+            - name: SKYVAULT_WORKER_ENABLED
+              value: "true"
+            {{- if .Values.storage.type }}
+            - name: SKYVAULT_STORAGE_URL
+              value: {{ .Values.storage.url | quote }}
+            {{- if eq .Values.storage.type "s3" }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ .Values.storage.s3.access_key | quote }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ .Values.storage.s3.secret_key | quote }}
+            - name: AWS_REGION
+              value: {{ .Values.storage.s3.region | quote }}
+            - name: AWS_S3_ENDPOINT
+              value: {{ .Values.storage.s3.endpoint | quote }}
+            - name: AWS_S3_FORCE_PATH_STYLE
+              value: "true"
+            {{- end }}
+            {{- end }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.worker.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.worker.port }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.worker.port }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          {{- if .Values.development.enabled }}
+          {{- if .Values.development.sourceCodeMount.enabled }}
+          volumeMounts:
+            - name: source-code
+              mountPath: /app
+          {{- end }}
+          {{- end }}
+      {{- if .Values.development.enabled }}
+      {{- if .Values.development.sourceCodeMount.enabled }}
+      volumes:
+        - name: source-code
+          hostPath:
+            path: {{ .Values.development.sourceCodeMount.hostPath }}
+      {{- end }}
+      {{- end }}
+{{- end }} 

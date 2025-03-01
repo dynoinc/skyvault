@@ -19,6 +19,7 @@ import (
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	indexv1connect "github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
 	orchestratorv1connect "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1/v1connect"
+	workerv1connect "github.com/dynoinc/skyvault/gen/proto/worker/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/batcher"
 	"github.com/dynoinc/skyvault/internal/cache"
 	"github.com/dynoinc/skyvault/internal/database"
@@ -26,6 +27,7 @@ import (
 	"github.com/dynoinc/skyvault/internal/middleware"
 	"github.com/dynoinc/skyvault/internal/orchestrator"
 	"github.com/dynoinc/skyvault/internal/storage"
+	"github.com/dynoinc/skyvault/internal/worker"
 	"github.com/earthboundkid/versioninfo/v2"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -47,6 +49,7 @@ type config struct {
 	Cache        cache.Config
 	Index        index.Config
 	Orchestrator orchestrator.Config
+	Worker       worker.Config
 }
 
 func main() {
@@ -195,6 +198,19 @@ func main() {
 		slog.InfoContext(ctx, "OrchestratorService enabled and healthy", "service", orchestratorv1connect.OrchestratorServiceName)
 	}
 
+	if c.Worker.Enabled {
+		workerHandler := worker.NewHandler(ctx, c.Worker)
+		path, handler := workerv1connect.NewWorkerServiceHandler(
+			workerHandler,
+			interceptors,
+		)
+		mux.Handle(path, handler)
+
+		// Set health status for WorkerService
+		healthSvc.SetStatus(workerv1connect.WorkerServiceName, grpchealth.StatusServing)
+		slog.InfoContext(ctx, "WorkerService enabled and healthy", "service", workerv1connect.WorkerServiceName)
+	}
+
 	// Set the overall service status
 	healthSvc.SetStatus("", grpchealth.StatusServing)
 
@@ -209,6 +225,7 @@ func main() {
 		cachev1connect.CacheServiceName,
 		indexv1connect.IndexServiceName,
 		orchestratorv1connect.OrchestratorServiceName,
+		workerv1connect.WorkerServiceName,
 	)
 	reflectPath, reflectHandler := grpcreflect.NewHandlerV1(reflector)
 	mux.Handle(reflectPath, reflectHandler)

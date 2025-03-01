@@ -128,6 +128,20 @@ orchestrator:
       memory: "256Mi"
       cpu: "200m"
 
+# Worker service configuration
+worker:
+  enabled: true
+  replicas: 2
+  port: 5005
+  # Use smaller resource requests for Minikube
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
 # Service configuration - Use NodePort for easier access in Minikube
 service:
   type: NodePort

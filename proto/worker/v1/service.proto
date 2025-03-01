@@ -1,0 +1,8 @@
+edition = "2023";
+
+package worker.v1;
+
+option go_package = "github.com/dynoinc/skyvault/gen/proto/worker/v1";
+
+service WorkerService {
+}
