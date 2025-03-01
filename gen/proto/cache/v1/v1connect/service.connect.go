@@ -37,12 +37,6 @@ const (
 	CacheServiceGetProcedure = "/cache.v1.CacheService/Get"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	cacheServiceServiceDescriptor   = v1.File_proto_cache_v1_service_proto.Services().ByName("CacheService")
-	cacheServiceGetMethodDescriptor = cacheServiceServiceDescriptor.Methods().ByName("Get")
-)
-
 // CacheServiceClient is a client for the cache.v1.CacheService service.
 type CacheServiceClient interface {
 	Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error)
@@ -57,11 +51,12 @@ type CacheServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewCacheServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CacheServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	cacheServiceMethods := v1.File_proto_cache_v1_service_proto.Services().ByName("CacheService").Methods()
 	return &cacheServiceClient{
 		get: connect.NewClient[v1.GetRequest, v1.GetResponse](
 			httpClient,
 			baseURL+CacheServiceGetProcedure,
-			connect.WithSchema(cacheServiceGetMethodDescriptor),
+			connect.WithSchema(cacheServiceMethods.ByName("Get")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,10 +83,11 @@ type CacheServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewCacheServiceHandler(svc CacheServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	cacheServiceMethods := v1.File_proto_cache_v1_service_proto.Services().ByName("CacheService").Methods()
 	cacheServiceGetHandler := connect.NewUnaryHandler(
 		CacheServiceGetProcedure,
 		svc.Get,
-		connect.WithSchema(cacheServiceGetMethodDescriptor),
+		connect.WithSchema(cacheServiceMethods.ByName("Get")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/cache.v1.CacheService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

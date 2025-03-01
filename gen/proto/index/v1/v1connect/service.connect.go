@@ -37,12 +37,6 @@ const (
 	IndexServiceGetProcedure = "/index.v1.IndexService/Get"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	indexServiceServiceDescriptor   = v1.File_proto_index_v1_service_proto.Services().ByName("IndexService")
-	indexServiceGetMethodDescriptor = indexServiceServiceDescriptor.Methods().ByName("Get")
-)
-
 // IndexServiceClient is a client for the index.v1.IndexService service.
 type IndexServiceClient interface {
 	Get(context.Context, *connect.Request[v1.GetRequest]) (*connect.Response[v1.GetResponse], error)
@@ -57,11 +51,12 @@ type IndexServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) IndexServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	indexServiceMethods := v1.File_proto_index_v1_service_proto.Services().ByName("IndexService").Methods()
 	return &indexServiceClient{
 		get: connect.NewClient[v1.GetRequest, v1.GetResponse](
 			httpClient,
 			baseURL+IndexServiceGetProcedure,
-			connect.WithSchema(indexServiceGetMethodDescriptor),
+			connect.WithSchema(indexServiceMethods.ByName("Get")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,10 +83,11 @@ type IndexServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewIndexServiceHandler(svc IndexServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	indexServiceMethods := v1.File_proto_index_v1_service_proto.Services().ByName("IndexService").Methods()
 	indexServiceGetHandler := connect.NewUnaryHandler(
 		IndexServiceGetProcedure,
 		svc.Get,
-		connect.WithSchema(indexServiceGetMethodDescriptor),
+		connect.WithSchema(indexServiceMethods.ByName("Get")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/index.v1.IndexService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

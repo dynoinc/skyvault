@@ -38,12 +38,6 @@ const (
 	BatcherServiceBatchWriteProcedure = "/batcher.v1.BatcherService/BatchWrite"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	batcherServiceServiceDescriptor          = v1.File_proto_batcher_v1_service_proto.Services().ByName("BatcherService")
-	batcherServiceBatchWriteMethodDescriptor = batcherServiceServiceDescriptor.Methods().ByName("BatchWrite")
-)
-
 // BatcherServiceClient is a client for the batcher.v1.BatcherService service.
 type BatcherServiceClient interface {
 	BatchWrite(context.Context, *connect.Request[v1.BatchWriteRequest]) (*connect.Response[v1.BatchWriteResponse], error)
@@ -58,11 +52,12 @@ type BatcherServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewBatcherServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BatcherServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	batcherServiceMethods := v1.File_proto_batcher_v1_service_proto.Services().ByName("BatcherService").Methods()
 	return &batcherServiceClient{
 		batchWrite: connect.NewClient[v1.BatchWriteRequest, v1.BatchWriteResponse](
 			httpClient,
 			baseURL+BatcherServiceBatchWriteProcedure,
-			connect.WithSchema(batcherServiceBatchWriteMethodDescriptor),
+			connect.WithSchema(batcherServiceMethods.ByName("BatchWrite")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -89,10 +84,11 @@ type BatcherServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewBatcherServiceHandler(svc BatcherServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	batcherServiceMethods := v1.File_proto_batcher_v1_service_proto.Services().ByName("BatcherService").Methods()
 	batcherServiceBatchWriteHandler := connect.NewUnaryHandler(
 		BatcherServiceBatchWriteProcedure,
 		svc.BatchWrite,
-		connect.WithSchema(batcherServiceBatchWriteMethodDescriptor),
+		connect.WithSchema(batcherServiceMethods.ByName("BatchWrite")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/batcher.v1.BatcherService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
