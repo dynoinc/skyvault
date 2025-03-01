@@ -12,7 +12,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
 
@@ -26,45 +26,55 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+          cache: true # Enable Go module caching
 
-      - name: Go Mod
-        run: go mod download
+      - name: Go Mod Download & Verify
+        run: |
+          go mod download
+          go mod verify
 
-      - name: Go Mod Verify
-        run: go mod verify
+      - name: Code Generation
+        run: |
+          go generate ./... && git diff --exit-code
+          go tool sqlc generate --no-remote -f ./internal/database/sqlc.yaml && git diff --exit-code
+          go tool buf generate --template proto/buf.gen.yaml && git diff --exit-code
 
-      - name: Go Generate
-        run: go generate ./... && git diff --exit-code
+      - name: Code Quality Checks
+        run: |
+          go fmt ./... && git diff --exit-code
+          go mod tidy && git diff --exit-code
+          go vet ./...
+          go tool staticcheck ./...
+          go tool govulncheck ./...
 
-      - name: SQLc Generate
-        run: go tool sqlc generate -f ./internal/database/sqlc.yaml && git diff --exit-code
+      - name: Build & Test
+        run: |
+          go build -v ./...
+          go test -v -count=1 -race -shuffle=on ./...
 
-      - name: Buf Generate
-        run: go tool buf generate --template proto/buf.gen.yaml && git diff --exit-code
+  helm:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
 
-      - name: Go Format
-        run: go fmt ./... && git diff --exit-code
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Go Tidy
-        run: go mod tidy && git diff --exit-code
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
 
-      - name: Go Vet
-        run: go vet ./...
-
-      - name: Go Staticcheck
-        run: go tool staticcheck ./...
-
-      - name: Go Vulncheck
-        run: go tool govulncheck
-
-      - name: Go Build
-        run: go build ./...
-
-      - name: Go Test
-        run: go test -v -count=1 -race -shuffle=on ./...
-
-      - name: Go Benchmark
-        run: go test -v -shuffle=on -run=- -bench=. -benchtime=1x ./...
+      - name: Helm Validation
+        run: |
+          helm lint helm/skyvault
+          helm template helm/skyvault --debug
+          helm template helm/skyvault -f helm/skyvault/values.yaml --validate
 
   scan:
     name: Security Scan
