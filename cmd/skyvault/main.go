@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/grpchealth"
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	indexv1connect "github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
@@ -129,6 +130,9 @@ func main() {
 		// Add any other global interceptors here
 	)
 
+	// Create the gRPC health checker
+	healthSvc := grpchealth.NewStaticChecker()
+
 	// Register Connect service handlers
 	if c.Batcher.Enabled {
 		batcherHandler := batcher.NewHandler(ctx, c.Batcher, database.New(db), store)
@@ -137,6 +141,10 @@ func main() {
 			interceptors,
 		)
 		mux.Handle(path, handler)
+
+		// Set health status for BatcherService
+		healthSvc.SetStatus(batcherv1connect.BatcherServiceName, grpchealth.StatusServing)
+		slog.InfoContext(ctx, "BatcherService enabled and healthy", "service", batcherv1connect.BatcherServiceName)
 	}
 
 	if c.Cache.Enabled {
@@ -146,6 +154,10 @@ func main() {
 			interceptors,
 		)
 		mux.Handle(path, handler)
+
+		// Set health status for CacheService
+		healthSvc.SetStatus(cachev1connect.CacheServiceName, grpchealth.StatusServing)
+		slog.InfoContext(ctx, "CacheService enabled and healthy", "service", cachev1connect.CacheServiceName)
 	}
 
 	if c.Index.Enabled {
@@ -160,7 +172,19 @@ func main() {
 			interceptors,
 		)
 		mux.Handle(path, handler)
+
+		// Set health status for IndexService
+		healthSvc.SetStatus(indexv1connect.IndexServiceName, grpchealth.StatusServing)
+		slog.InfoContext(ctx, "IndexService enabled and healthy", "service", indexv1connect.IndexServiceName)
 	}
+
+	// Set the overall service status
+	healthSvc.SetStatus("", grpchealth.StatusServing)
+
+	// Register the health check service
+	healthPath, healthHandler := grpchealth.NewHandler(healthSvc)
+	mux.Handle(healthPath, healthHandler)
+	slog.InfoContext(ctx, "gRPC health check service initialized", "path", healthPath)
 
 	// Register HTTP endpoints
 	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)
