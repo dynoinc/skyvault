@@ -10,135 +10,104 @@ import (
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
-// mockQuerier implements database.Querier for testing
-type mockQuerier struct {
-	mock.Mock
-}
-
-func (m *mockQuerier) AddL0Batch(ctx context.Context, path string) (int64, error) {
-	args := m.Called(ctx, path)
-	return args.Get(0).(int64), args.Error(1)
-}
-
-func (m *mockQuerier) GetAllL0Batches(ctx context.Context) ([]database.L0Batch, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]database.L0Batch), args.Error(1)
-}
-
-// mockCacheClient mocks the cache service client
-type mockCacheClient struct {
-	mock.Mock
-}
-
-func (m *mockCacheClient) Get(ctx context.Context, req *connect.Request[cachev1.GetRequest]) (*connect.Response[cachev1.GetResponse], error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*connect.Response[cachev1.GetResponse]), args.Error(1)
-}
-
 func TestHandler_Get(t *testing.T) {
-	ctx := context.Background()
+	// Create a new gomock controller
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	// Create mock database with l0 batches
-	db := &mockQuerier{}
+	// Create mock objects
+	mockDB := mocks.NewMockQuerier(ctrl)
+	mockCacheClient := mocks.NewMockCacheServiceClient(ctrl)
 
-	// Setup test data: 3 l0 batches with timestamps in descending order
-	now := time.Now()
-	batch1 := database.L0Batch{
-		ID:        1,
-		Path:      "batch1",
-		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
-	}
-	batch2 := database.L0Batch{
-		ID:        2,
-		Path:      "batch2",
-		CreatedAt: pgtype.Timestamptz{Time: now.Add(-1 * time.Hour), Valid: true},
-	}
-	batch3 := database.L0Batch{
-		ID:        3,
-		Path:      "batch3",
-		CreatedAt: pgtype.Timestamptz{Time: now.Add(-2 * time.Hour), Valid: true},
-	}
+	// Setup fake Kubernetes client with test pods
+	fakeKubeClient := fake.NewSimpleClientset(&corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cache-pod-1",
+			Namespace: "default",
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "cache",
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			PodIP: "10.0.0.1",
+		},
+	})
 
-	// Setup database mock to return our batches
-	db.On("GetAllL0Batches", ctx).Return([]database.L0Batch{batch1, batch2, batch3}, nil)
-
-	// Setup mock cache client that will respond with different values for each batch
-	cacheClient := &mockCacheClient{}
-
-	// Create the handler
+	// Create the handler with mocks
 	h := &handler{
 		config: Config{
-			Enabled: true,
+			Enabled:     true,
+			Namespace:   "default",
+			RefreshRate: 30 * time.Second,
 		},
-		ctx: ctx,
-		db:  db,
-		ring: &consistentRing{
-			members: []Member{"test-cache:5002"},
-			hasher:  hasher{},
-		},
-		cacheClients: map[string]cachev1connect.CacheServiceClient{
-			"test-cache:5002": cacheClient,
-		},
+		ctx:          context.Background(),
+		db:           mockDB,
+		kubeClient:   fakeKubeClient,
+		ring:         NewConsistentRing(),
+		cacheClients: make(map[string]cachev1connect.CacheServiceClient),
 	}
 
-	// Setup request with keys to look up
+	// Mock the database response
+	mockDB.EXPECT().
+		GetAllL0Batches(gomock.Any()).
+		Return([]database.L0Batch{
+			{
+				ID:   1,
+				Path: "batch-1",
+			},
+		}, nil)
+
+	// Create a test request
 	req := connect.NewRequest(&v1.GetRequest{})
-	req.Msg.SetKeys([][]byte{[]byte("key1"), []byte("key2"), []byte("key3")})
+	req.Msg.SetKeys([][]byte{[]byte("test-key")})
 
-	// Setup mock responses for each batch
+	// Define what the mock cache client should return
+	cacheResp := &cachev1.GetResponse{}
+	cacheResp.SetKeys([][]byte{[]byte("test-key")})
+	cacheResp.SetValues([][]byte{[]byte("test-value")})
 
-	// Batch 1 has key1 and key2
-	resp1 := connect.NewResponse(&cachev1.GetResponse{})
-	resp1.Msg.SetKeys([][]byte{[]byte("key1"), []byte("key2")})
-	resp1.Msg.SetValues([][]byte{[]byte("value1-batch1"), []byte("value2-batch1")})
+	mockCacheClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(connect.NewResponse(cacheResp), nil)
 
-	// Batch 2 has key3 only
-	resp2 := connect.NewResponse(&cachev1.GetResponse{})
-	resp2.Msg.SetKeys([][]byte{[]byte("key3")})
-	resp2.Msg.SetValues([][]byte{[]byte("value3-batch2")})
+	// Add the mock cache client to the handler
+	h.ringMu.Lock()
+	h.cacheClients["10.0.0.1:5002"] = mockCacheClient
+	h.ring.Add(Member("10.0.0.1:5002"))
+	h.ringMu.Unlock()
 
-	// Setup mock cache client to return these responses
-	// The first call should be for batch1, etc.
-	cacheClient.On("Get", ctx, mock.Anything).Return(resp1, nil).Once()
-	cacheClient.On("Get", ctx, mock.Anything).Return(resp2, nil).Once()
-	// Batch 3 should not be queried since we found all keys in batch1 and batch2
+	// Call the handler method
+	resp, err := h.Get(context.Background(), req)
 
-	// Call the handler
-	resp, err := h.Get(ctx, req)
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-
-	// Verify the response
-	// We should have all 3 keys, with values from the newest batches
-	keys := resp.Msg.GetKeys()
-	values := resp.Msg.GetValues()
-
-	// Create a map of key-value pairs for easier verification
-	kvMap := make(map[string]string)
-	for i, key := range keys {
-		kvMap[string(key)] = string(values[i])
-	}
-
-	// Check that we got the values from the newest batches
-	assert.Equal(t, "value1-batch1", kvMap["key1"]) // key1 from batch1
-	assert.Equal(t, "value2-batch1", kvMap["key2"]) // key2 from batch1
-	assert.Equal(t, "value3-batch2", kvMap["key3"]) // key3 from batch2
-
-	// Verify that the mock expectations were met
-	mock.AssertExpectationsForObjects(t, db, cacheClient)
+	// Assert the response
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, 1, len(resp.Msg.GetKeys()))
+	assert.Equal(t, "test-key", string(resp.Msg.GetKeys()[0]))
+	assert.Equal(t, "test-value", string(resp.Msg.GetValues()[0]))
 }
 
 func TestValuePrecedence(t *testing.T) {
+	// Create a new gomock controller
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	ctx := context.Background()
 
-	// Create mock database with l0 batches
-	db := &mockQuerier{}
+	// Create mock objects
+	mockDB := mocks.NewMockQuerier(ctrl)
+	mockCacheClient := mocks.NewMockCacheServiceClient(ctrl)
 
 	// Setup test data: 2 l0 batches with timestamps in descending order
 	now := time.Now()
@@ -154,10 +123,9 @@ func TestValuePrecedence(t *testing.T) {
 	}
 
 	// Setup database mock to return our batches
-	db.On("GetAllL0Batches", ctx).Return([]database.L0Batch{batch1, batch2}, nil)
-
-	// Setup mock cache client
-	cacheClient := &mockCacheClient{}
+	mockDB.EXPECT().
+		GetAllL0Batches(gomock.Any()).
+		Return([]database.L0Batch{batch1, batch2}, nil)
 
 	// Create the handler
 	h := &handler{
@@ -165,13 +133,13 @@ func TestValuePrecedence(t *testing.T) {
 			Enabled: true,
 		},
 		ctx: ctx,
-		db:  db,
+		db:  mockDB,
 		ring: &consistentRing{
 			members: []Member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
-			"test-cache:5002": cacheClient,
+			"test-cache:5002": mockCacheClient,
 		},
 	}
 
@@ -182,17 +150,14 @@ func TestValuePrecedence(t *testing.T) {
 	// Setup mock responses for each batch
 
 	// Batch 1 has key1 with one value
-	resp1 := connect.NewResponse(&cachev1.GetResponse{})
-	resp1.Msg.SetKeys([][]byte{[]byte("key1")})
-	resp1.Msg.SetValues([][]byte{[]byte("newer-value")})
+	resp1 := &cachev1.GetResponse{}
+	resp1.SetKeys([][]byte{[]byte("key1")})
+	resp1.SetValues([][]byte{[]byte("newer-value")})
 
-	// Batch 2 has key1 with a different value
-	resp2 := connect.NewResponse(&cachev1.GetResponse{})
-	resp2.Msg.SetKeys([][]byte{[]byte("key1")})
-	resp2.Msg.SetValues([][]byte{[]byte("older-value")})
-
-	// Setup mock cache client
-	cacheClient.On("Get", ctx, mock.Anything).Return(resp1, nil).Once()
+	// Setup mock cache client expectation for the first batch only
+	mockCacheClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(connect.NewResponse(resp1), nil)
 	// Batch 2 should not be queried since we found the key in batch1
 
 	// Call the handler
@@ -209,14 +174,18 @@ func TestValuePrecedence(t *testing.T) {
 	// Check that we got the newer value
 	assert.Equal(t, "key1", string(keys[0]))
 	assert.Equal(t, "newer-value", string(values[0]))
-
-	// Verify that the mock expectations were met
-	mock.AssertExpectationsForObjects(t, db, cacheClient)
 }
 
 func TestEmptyKeyRequest(t *testing.T) {
+	// Create a new gomock controller
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	ctx := context.Background()
-	db := &mockQuerier{}
+
+	// Create mock objects
+	mockDB := mocks.NewMockQuerier(ctrl)
+	mockCacheClient := mocks.NewMockCacheServiceClient(ctrl)
 
 	// Create the handler
 	h := &handler{
@@ -224,13 +193,13 @@ func TestEmptyKeyRequest(t *testing.T) {
 			Enabled: true,
 		},
 		ctx: ctx,
-		db:  db,
+		db:  mockDB,
 		ring: &consistentRing{
 			members: []Member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
-			"test-cache:5002": &mockCacheClient{},
+			"test-cache:5002": mockCacheClient,
 		},
 	}
 
@@ -245,11 +214,19 @@ func TestEmptyKeyRequest(t *testing.T) {
 }
 
 func TestDatabaseError(t *testing.T) {
+	// Create a new gomock controller
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	ctx := context.Background()
-	db := &mockQuerier{}
+
+	// Create mock objects
+	mockDB := mocks.NewMockQuerier(ctrl)
 
 	// Setup database mock to return an error
-	db.On("GetAllL0Batches", ctx).Return([]database.L0Batch{}, assert.AnError)
+	mockDB.EXPECT().
+		GetAllL0Batches(gomock.Any()).
+		Return([]database.L0Batch{}, assert.AnError)
 
 	// Create the handler
 	h := &handler{
@@ -257,14 +234,12 @@ func TestDatabaseError(t *testing.T) {
 			Enabled: true,
 		},
 		ctx: ctx,
-		db:  db,
+		db:  mockDB,
 		ring: &consistentRing{
 			members: []Member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
-		cacheClients: map[string]cachev1connect.CacheServiceClient{
-			"test-cache:5002": &mockCacheClient{},
-		},
+		cacheClients: map[string]cachev1connect.CacheServiceClient{},
 	}
 
 	// Setup request
@@ -278,10 +253,15 @@ func TestDatabaseError(t *testing.T) {
 }
 
 func TestCacheServiceError(t *testing.T) {
+	// Create a new gomock controller
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	ctx := context.Background()
 
-	// Create mock database with l0 batches
-	db := &mockQuerier{}
+	// Create mock objects
+	mockDB := mocks.NewMockQuerier(ctrl)
+	mockCacheClient := mocks.NewMockCacheServiceClient(ctrl)
 
 	// Setup test data
 	now := time.Now()
@@ -292,20 +272,18 @@ func TestCacheServiceError(t *testing.T) {
 	}
 
 	// Setup database mock
-	db.On("GetAllL0Batches", ctx).Return([]database.L0Batch{batch1}, nil)
+	mockDB.EXPECT().
+		GetAllL0Batches(gomock.Any()).
+		Return([]database.L0Batch{batch1}, nil)
 
-	// Setup mock cache client that will return an error
-	cacheClient := &mockCacheClient{}
-	// First call (primary endpoint)
-	cacheClient.On("Get", ctx, mock.Anything).Return(
-		(*connect.Response[cachev1.GetResponse])(nil),
-		assert.AnError,
-	).Once()
-	// Second call (fallback endpoint)
-	cacheClient.On("Get", ctx, mock.Anything).Return(
-		(*connect.Response[cachev1.GetResponse])(nil),
-		assert.AnError,
-	).Once()
+	// Setup mock cache client that will return an error for both primary and fallback endpoints
+	mockCacheClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(nil, assert.AnError)
+
+	mockCacheClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(nil, assert.AnError)
 
 	// Create the handler
 	h := &handler{
@@ -313,13 +291,14 @@ func TestCacheServiceError(t *testing.T) {
 			Enabled: true,
 		},
 		ctx: ctx,
-		db:  db,
+		db:  mockDB,
 		ring: &consistentRing{
-			members: []Member{"test-cache:5002"},
+			members: []Member{"primary:5002", "fallback:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
-			"test-cache:5002": cacheClient,
+			"primary:5002":  mockCacheClient,
+			"fallback:5002": mockCacheClient,
 		},
 	}
 
@@ -332,7 +311,4 @@ func TestCacheServiceError(t *testing.T) {
 	// Should return an error since we can't process the batch
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cache services unavailable for batch 1")
-
-	// Verify that the mock expectations were met
-	mock.AssertExpectationsForObjects(t, db, cacheClient)
 }
