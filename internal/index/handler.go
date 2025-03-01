@@ -204,7 +204,7 @@ func (h *handler) Get(
 ) (*connect.Response[v1.GetResponse], error) {
 	keys := req.Msg.GetKeys()
 	if len(keys) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("at least one key is required"))
+		return connect.NewResponse(&v1.GetResponse{}), nil
 	}
 
 	// Get all l0 batches from the database
@@ -288,8 +288,6 @@ func (h *handler) Get(
 			// Return an error since we're unable to process this batch
 			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for batch %d: %w", batch.ID, lastErr))
 		}
-
-		slog.Debug("Lookup result", "batch", batch.ID, "endpoint", primaryEndpoint, "found", len(resp.Msg.GetResults()), "remaining", len(remainingKeys))
 
 		// Process the results
 		cacheResults := resp.Msg.GetResults()
