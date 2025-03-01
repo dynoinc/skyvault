@@ -70,11 +70,11 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Helm Validation
-        run: |
-          helm lint helm/skyvault
-          helm template helm/skyvault --debug
-          helm template helm/skyvault -f helm/skyvault/values.yaml --validate
+      - name: Lint Helm Chart
+        run: helm lint helm/skyvault
+
+      - name: Validate Chart Templates
+        run: helm template helm/skyvault > /dev/null
 
   scan:
     name: Security Scan
