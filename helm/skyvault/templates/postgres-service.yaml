@@ -1,0 +1,19 @@
+{{- if .Values.database.deploy }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "skyvault.fullname" . }}-postgres
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "skyvault.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+{{- end }} 

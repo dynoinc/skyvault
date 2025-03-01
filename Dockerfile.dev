@@ -1,0 +1,4 @@
+FROM alpine:3.19
+COPY ./bin/skyvault /skyvault
+RUN chmod +x /skyvault
+ENTRYPOINT ["/skyvault"]

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: skyvault
+description: A Helm chart for SkyVault service
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - skyvault
+  - batcher
+maintainers:
+  - name: SkyVault Team 

@@ -1,0 +1,33 @@
+{{- if .Values.storage.deploy }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "skyvault.fullname" . }}-create-bucket
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "skyvault.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: storage-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mc alias set myminio {{ .Values.storage.s3.endpoint }} {{ .Values.storage.s3.access_key }} {{ .Values.storage.s3.secret_key }};
+              mc mb --ignore-existing myminio/{{ .Values.storage.s3.bucket }};
+              echo "Bucket creation completed";
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }} 

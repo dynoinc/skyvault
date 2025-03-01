@@ -31,8 +31,6 @@ import (
 )
 
 type config struct {
-	DevMode bool `split_words:"true" default:"true"`
-
 	Addr        string `split_words:"true" default:"127.0.0.1:5001"`
 	DatabaseURL string `split_words:"true" default:"postgres://postgres:postgres@127.0.0.1:5431/postgres?sslmode=disable"`
 	StorageURL  string `split_words:"true" default:"filesystem://objstore"`
@@ -43,6 +41,7 @@ type config struct {
 func main() {
 	help := flag.Bool("help", false, "Show help")
 	version := flag.Bool("version", false, "Show version")
+	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
 	if *help {
@@ -81,7 +80,7 @@ func main() {
 		AddSource:   true,
 		ReplaceAttr: shortfile,
 	}))
-	if c.DevMode {
+	if *debug {
 		logger = slog.New(tint.NewHandler(os.Stderr, &tint.Options{
 			AddSource:   true,
 			Level:       slog.LevelDebug,
@@ -102,12 +101,6 @@ func main() {
 	otel.SetMeterProvider(meterProvider)
 
 	// Database setup
-	if c.DevMode {
-		if err := database.StartPostgresContainer(ctx, c.DatabaseURL); err != nil {
-			slog.ErrorContext(ctx, "setting up dev database", "error", err)
-			os.Exit(1)
-		}
-	}
 	db, err := database.Pool(ctx, c.DatabaseURL)
 	if err != nil {
 		slog.ErrorContext(ctx, "setting up database", "error", err)

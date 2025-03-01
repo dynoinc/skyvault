@@ -1,0 +1,83 @@
+{{- if .Values.storage.deploy }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "skyvault.fullname" . }}-minio
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "skyvault.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: storage
+  template:
+    metadata:
+      labels:
+        {{- include "skyvault.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: storage
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: minio
+          image: "{{ .Values.storage.minio.image.repository }}:{{ .Values.storage.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.storage.minio.image.pullPolicy | default .Values.image.pullPolicy }}
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          ports:
+            - name: api
+              containerPort: 9000
+              protocol: TCP
+            - name: console
+              containerPort: 9001
+              protocol: TCP
+          env:
+            - name: MINIO_ROOT_USER
+              value: {{ .Values.storage.s3.access_key | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              value: {{ .Values.storage.s3.secret_key | quote }}
+            - name: MINIO_REGION
+              value: {{ .Values.storage.s3.region | quote }}
+          resources:
+            {{- toYaml .Values.storage.minio.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.storage.minio.persistence.enabled }}
+            - name: minio-data
+              mountPath: /data
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- if .Values.storage.minio.persistence.enabled }}
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: {{ include "skyvault.fullname" . }}-minio
+        {{- end }}
+{{- end }} 

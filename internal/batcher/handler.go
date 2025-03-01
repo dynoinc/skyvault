@@ -17,7 +17,7 @@ import (
 )
 
 type Config struct {
-	Enabled       bool          `default:"true"`
+	Enabled       bool          `default:"false"`
 	MaxBatchBytes int           `default:"4194304"`
 	MaxBatchAge   time.Duration `default:"500ms"`
 	MaxConcurrent int           `default:"4"`

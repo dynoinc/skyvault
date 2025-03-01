@@ -1,0 +1,102 @@
+{{- if .Values.batcher.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "skyvault.fullname" . }}-batcher
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+    app.kubernetes.io/component: batcher
+spec:
+  replicas: {{ .Values.batcher.replicas }}
+  selector:
+    matchLabels:
+      {{- include "skyvault.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: batcher
+  template:
+    metadata:
+      labels:
+        {{- include "skyvault.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: batcher
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/skyvault", "--debug"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.batcher.port }}
+              protocol: TCP
+          env:
+            - name: SKYVAULT_ADDR
+              value: "0.0.0.0:{{ .Values.batcher.port }}"
+            - name: SKYVAULT_DATABASE_URL
+              value: {{ .Values.database.url | quote }}
+            - name: SKYVAULT_STORAGE_URL
+              value: {{ .Values.storage.url | quote }}
+            - name: SKYVAULT_BATCHER_ENABLED
+              value: "true"
+            - name: SKYVAULT_BATCHER_MAX_BATCH_BYTES
+              value: "{{ .Values.batcher.maxBatchBytes }}"
+            - name: SKYVAULT_BATCHER_MAX_BATCH_AGE
+              value: "{{ .Values.batcher.maxBatchAge }}"
+            - name: SKYVAULT_BATCHER_MAX_CONCURRENT
+              value: "{{ .Values.batcher.maxConcurrent }}"
+            {{- if eq .Values.storage.type "s3" }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ .Values.storage.s3.access_key | quote }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ .Values.storage.s3.secret_key | quote }}
+            - name: AWS_REGION
+              value: {{ .Values.storage.s3.region | quote }}
+            - name: S3_ENDPOINT
+              value: {{ .Values.storage.s3.endpoint | quote }}
+            - name: S3_USE_SSL
+              value: {{ .Values.storage.s3.secure | quote }}
+            - name: S3_BUCKET_NAME
+              value: {{ .Values.storage.s3.bucket | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /version
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /version
+              port: http
+          resources:
+            {{- toYaml .Values.batcher.resources | nindent 12 }}
+          # Mount source code for development
+          {{- if .Values.development.sourceCodeMount.enabled }}
+          volumeMounts:
+            - name: source-code
+              mountPath: /src
+          {{- end }}
+      {{- if .Values.development.sourceCodeMount.enabled }}
+      volumes:
+        - name: source-code
+          hostPath:
+            path: {{ .Values.development.sourceCodeMount.hostPath }}
+            type: Directory
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }} 

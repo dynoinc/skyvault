@@ -1,0 +1,95 @@
+# Minikube-specific values for skyvault Helm chart
+# This file contains optimized settings for local development with Minikube
+
+# Common image settings
+image:
+  repository: skyvault
+  pullPolicy: IfNotPresent  # Changed from Never to IfNotPresent to allow pulling images when needed
+  tag: "latest"
+
+# Development mode settings for faster iteration
+development:
+  enabled: false  # Set to true in development command
+  # Hot reload configuration
+  hotReload: false
+  # Volume mount for source code
+  sourceCodeMount:
+    enabled: false
+    hostPath: ""  # Will be set to current directory automatically in justfile command
+
+# Database configuration
+database:
+  url: "postgres://postgres:postgres@skyvault-postgres:5432/postgres?sslmode=disable"
+  deploy: true
+  image:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent  # Explicitly set the pull policy for PostgreSQL
+  # Add persistence configuration for database
+  persistence:
+    enabled: true
+    size: 1Gi
+  # Use smaller resource requests for Minikube
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"
+
+# Storage configuration (MinIO S3-compatible)
+storage:
+  url: "s3://skyvault-minio:9000/skyvault-bucket"  # Updated to correct format: s3://<minio-endpoint>/<bucket-name>
+  type: "s3"
+  s3:
+    endpoint: "http://skyvault-minio:9000"
+    bucket: "skyvault-bucket"
+    region: "us-east-1"
+    access_key: "minioadmin"
+    secret_key: "minioadmin"
+    secure: false
+  deploy: true
+  minio:
+    image:
+      repository: minio/minio
+      tag: "latest"
+      pullPolicy: IfNotPresent  # Explicitly set the pull policy for MinIO
+    # Add persistence configuration for MinIO
+    persistence:
+      enabled: true
+      size: 2Gi
+    # Use smaller resource requests for Minikube
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "250m"
+
+# Batcher service configuration
+batcher:
+  enabled: true
+  replicas: 2
+  port: 5001
+  maxBatchBytes: 4194304
+  maxBatchAge: "500ms"
+  maxConcurrent: 4
+  # Use smaller resource requests for Minikube
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Service configuration - Use NodePort for easier access in Minikube
+service:
+  type: NodePort
+  port: 80
+  
+# Disable features not needed for local development
+ingress:
+  enabled: false 
