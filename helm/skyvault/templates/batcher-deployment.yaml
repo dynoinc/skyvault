@@ -32,8 +32,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/skyvault", "--debug"]
           ports:
-            - name: http
-              containerPort: {{ .Values.batcher.port }}
+            - containerPort: {{ .Values.batcher.port }}
               protocol: TCP
           env:
             - name: SKYVAULT_ADDR
@@ -67,11 +66,11 @@ spec:
           livenessProbe:
             httpGet:
               path: /version
-              port: http
+              port: {{ .Values.batcher.port }}
           readinessProbe:
             httpGet:
               path: /version
-              port: http
+              port: {{ .Values.batcher.port }}
           resources:
             {{- toYaml .Values.batcher.resources | nindent 12 }}
           # Mount source code for development

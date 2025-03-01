@@ -45,5 +45,5 @@ k8s-reset:
     helm uninstall skyvault || true
 
 k8s-logs:
-    # Follow logs for the batcher pods
-    kubectl logs -f -l app.kubernetes.io/component=batcher
+    # Tail logs for all components (batcher, index, and cache)
+    kubectl logs -f -l "app.kubernetes.io/component in (batcher,index,cache)" --max-log-requests 1000

@@ -28,8 +28,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/skyvault", "--debug"]
           ports:
-            - name: http
-              containerPort: {{ .Values.index.port }}
+            - containerPort: {{ .Values.index.port }}
               protocol: TCP
           env:
             - name: SKYVAULT_ADDR
@@ -65,11 +64,11 @@ spec:
           livenessProbe:
             httpGet:
               path: /version
-              port: http
+              port: {{ .Values.index.port }}
           readinessProbe:
             httpGet:
               path: /version
-              port: http
+              port: {{ .Values.index.port }}
           resources:
             {{- toYaml .Values.index.resources | nindent 12 }}
           {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}

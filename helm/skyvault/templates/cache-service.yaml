@@ -10,9 +10,8 @@ spec:
   type: ClusterIP
   ports:
     - port: {{ .Values.cache.port }}
-      targetPort: http
+      targetPort: {{ .Values.cache.port }}
       protocol: TCP
-      name: http
   selector:
     {{- include "skyvault.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: cache

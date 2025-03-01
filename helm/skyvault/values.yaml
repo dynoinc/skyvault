@@ -117,7 +117,6 @@ index:
 # Service configuration - Use NodePort for easier access in Minikube
 service:
   type: NodePort
-  port: 80
   
 # Disable features not needed for local development
 ingress:
