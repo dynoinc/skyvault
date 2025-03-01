@@ -8,7 +8,7 @@ import (
 
 func TestWriteAndReadSingleRecord(t *testing.T) {
 	records := []Record{{
-		Key:   []byte("key1"),
+		Key:   "key1",
 		Value: []byte("value1"),
 	}}
 
@@ -26,9 +26,9 @@ func TestWriteAndReadSingleRecord(t *testing.T) {
 
 func TestWriteAndReadMultipleRecords(t *testing.T) {
 	records := []Record{
-		{Key: []byte("key1"), Value: []byte("value1")},
-		{Key: []byte("key2"), Value: []byte("value2")},
-		{Key: []byte("key3"), Value: []byte("value3")},
+		{Key: "key1", Value: []byte("value1")},
+		{Key: "key2", Value: []byte("value2")},
+		{Key: "key3", Value: []byte("value3")},
 	}
 
 	data := WriteRecords(records)
@@ -42,9 +42,9 @@ func TestWriteAndReadMultipleRecords(t *testing.T) {
 
 func TestDeduplication(t *testing.T) {
 	records := []Record{
-		{Key: []byte("key1"), Value: []byte("value1")},
-		{Key: []byte("key1"), Value: []byte("value2")},
-		{Key: []byte("key1"), Value: []byte("value3")},
+		{Key: "key1", Value: []byte("value1")},
+		{Key: "key1", Value: []byte("value2")},
+		{Key: "key1", Value: []byte("value3")},
 	}
 
 	data := WriteRecords(records)
@@ -59,9 +59,9 @@ func TestDeduplication(t *testing.T) {
 
 func TestTombstones(t *testing.T) {
 	records := []Record{
-		{Key: []byte("key1"), Value: []byte("value1")},
-		{Key: []byte("key2"), Tombstone: true},
-		{Key: []byte("key3"), Value: []byte("value2")},
+		{Key: "key1", Value: []byte("value1")},
+		{Key: "key2", Tombstone: true},
+		{Key: "key3", Value: []byte("value2")},
 	}
 
 	data := WriteRecords(records)
@@ -71,19 +71,19 @@ func TestTombstones(t *testing.T) {
 	}
 
 	require.Len(t, readRecords, 3)
-	require.Equal(t, []byte("key1"), readRecords[0].Key)
+	require.Equal(t, "key1", readRecords[0].Key)
 	require.Equal(t, []byte("value1"), readRecords[0].Value)
-	require.Equal(t, []byte("key2"), readRecords[1].Key)
+	require.Equal(t, "key2", readRecords[1].Key)
 	require.True(t, readRecords[1].Tombstone)
-	require.Equal(t, []byte("key3"), readRecords[2].Key)
+	require.Equal(t, "key3", readRecords[2].Key)
 	require.Equal(t, []byte("value2"), readRecords[2].Value)
 }
 
 func TestSorting(t *testing.T) {
 	records := []Record{
-		{Key: []byte("key3"), Value: []byte("value3")},
-		{Key: []byte("key1"), Value: []byte("value1")},
-		{Key: []byte("key2"), Value: []byte("value2")},
+		{Key: "key3", Value: []byte("value3")},
+		{Key: "key1", Value: []byte("value1")},
+		{Key: "key2", Value: []byte("value2")},
 	}
 
 	data := WriteRecords(records)
@@ -93,7 +93,7 @@ func TestSorting(t *testing.T) {
 	}
 
 	require.Len(t, readRecords, 3)
-	require.Equal(t, []byte("key1"), readRecords[0].Key)
-	require.Equal(t, []byte("key2"), readRecords[1].Key)
-	require.Equal(t, []byte("key3"), readRecords[2].Key)
+	require.Equal(t, "key1", readRecords[0].Key)
+	require.Equal(t, "key2", readRecords[1].Key)
+	require.Equal(t, "key3", readRecords[2].Key)
 }

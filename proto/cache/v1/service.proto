@@ -10,10 +10,17 @@ service CacheService {
 
 message GetRequest {
   string object_path = 1;
-  repeated bytes keys = 2;
+  repeated string keys = 2;
 }
 
 message GetResponse {
-  repeated bytes keys = 1;
-  repeated bytes values = 2;
+  repeated Result results = 1;
+}
+
+message Result {
+  oneof status {
+    bytes found = 1;
+    bool not_found = 2;
+    bool deleted = 3;
+  }
 }

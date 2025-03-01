@@ -132,21 +132,33 @@ func (h *handler) Get(
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("error retrieving object: %w", err))
 	}
 
-	// Find requested keys in the data
-	foundKeys := make([][]byte, 0, len(keys))
-	foundValues := make([][]byte, 0, len(keys))
-
-	// Use recordio.Records to iterate through the records
+	// Create a map to track which keys we're looking for
 	keyMap := make(map[string]bool, len(keys))
 	for _, key := range keys {
-		keyMap[string(key)] = true
+		keyMap[key] = true
 	}
 
+	// Create results for each requested key
+	results := make([]*v1.Result, 0, len(keys))
+	foundMap := make(map[string]*v1.Result, len(keys))
+
+	// Iterate through the records
 	for record := range recordio.Records(data) {
-		if keyMap[string(record.Key)] {
-			foundKeys = append(foundKeys, record.Key)
-			foundValues = append(foundValues, record.Value)
-			delete(keyMap, string(record.Key))
+		recordKeyStr := string(record.Key)
+		if keyMap[recordKeyStr] {
+			// Create a result for this key
+			result := &v1.Result{}
+			if record.Tombstone {
+				result.SetDeleted(true)
+			} else {
+				result.SetFound(record.Value)
+			}
+
+			// Store the result for this key
+			foundMap[recordKeyStr] = result
+
+			// Remove from the keyMap so we don't process it again
+			delete(keyMap, recordKeyStr)
 
 			// If we've found all keys, we can stop
 			if len(keyMap) == 0 {
@@ -155,9 +167,21 @@ func (h *handler) Get(
 		}
 	}
 
+	// Create results in the same order as the requested keys
+	for _, key := range keys {
+		if result, found := foundMap[key]; found {
+			results = append(results, result)
+		} else {
+			// Key not found in the object
+			notFound := &v1.Result{}
+			notFound.SetNotFound(true)
+			results = append(results, notFound)
+		}
+	}
+
+	// Create response with results
 	resp := &v1.GetResponse{}
-	resp.SetKeys(foundKeys)
-	resp.SetValues(foundValues)
+	resp.SetResults(results)
 	return connect.NewResponse(resp), nil
 }
 

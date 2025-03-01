@@ -213,20 +213,19 @@ func (h *handler) Get(
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("error retrieving l0 batches: %w", err))
 	}
 
-	// Sort batches by ID, highest first
+	// Sort batches by ID, highest first (newest first)
 	sort.Slice(l0Batches, func(i, j int) bool {
 		return l0Batches[i].ID > l0Batches[j].ID
 	})
 
 	// Track which keys we've found
-	remainingKeys := make(map[string][]byte)
+	remainingKeys := make(map[string]string)
 	for _, key := range keys {
-		remainingKeys[string(key)] = key
+		remainingKeys[key] = key
 	}
 
-	// Results storage
-	foundKeys := make([][]byte, 0, len(keys))
-	foundValues := make([][]byte, 0, len(keys))
+	// Results storage - map of results keyed by string key
+	resultsByKey := make(map[string]*v1.Result, len(keys))
 
 	// Check each batch for the keys we need
 	for _, batch := range l0Batches {
@@ -239,10 +238,12 @@ func (h *handler) Get(
 		objectPath := path.Join("l0_batches", batch.Path)
 
 		// Prepare the keys we still need to look for
-		keysToFind := make([][]byte, 0, len(remainingKeys))
-		for _, key := range remainingKeys {
+		keysToFind := make([]string, 0, len(remainingKeys))
+		for key := range remainingKeys {
 			keysToFind = append(keysToFind, key)
 		}
+		// Sort keys for deterministic order
+		sort.Strings(keysToFind)
 
 		// Get the primary and fallback endpoints while holding the ring lock
 		h.ringMu.RLock()
@@ -288,25 +289,58 @@ func (h *handler) Get(
 			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for batch %d: %w", batch.ID, lastErr))
 		}
 
-		slog.Debug("Lookup result", "batch", batch.ID, "endpoint", primaryEndpoint, "found", len(resp.Msg.GetKeys()), "remaining", len(remainingKeys))
+		slog.Debug("Lookup result", "batch", batch.ID, "endpoint", primaryEndpoint, "found", len(resp.Msg.GetResults()), "remaining", len(remainingKeys))
 
 		// Process the results
-		for i, key := range resp.Msg.GetKeys() {
-			keyStr := string(key)
+		cacheResults := resp.Msg.GetResults()
+		for i, cacheResult := range cacheResults {
+			key := keysToFind[i]
 
-			// Add to results
-			foundKeys = append(foundKeys, key)
-			foundValues = append(foundValues, resp.Msg.GetValues()[i])
+			// Only process keys that we're still looking for
+			if _, needsProcessing := remainingKeys[key]; !needsProcessing {
+				continue
+			}
 
-			// Remove from remaining keys
-			delete(remainingKeys, keyStr)
+			// Create an index result from the cache result
+			indexResult := &v1.Result{}
+
+			// Record this result based on the status
+			if cacheResult.HasFound() {
+				// Key found with a value - store it and remove from remaining
+				indexResult.SetFound(cacheResult.GetFound())
+				resultsByKey[key] = indexResult
+				delete(remainingKeys, key)
+			} else if cacheResult.HasDeleted() {
+				// Key has a tombstone - store it as deleted and remove from remaining
+				// Tombstones in newer batches take precedence over older values
+				indexResult.SetDeleted(true)
+				resultsByKey[key] = indexResult
+				delete(remainingKeys, key)
+			} else if cacheResult.HasNotFound() {
+				// Key was not found in this batch
+				// Continue searching in older batches - don't remove from remainingKeys
+				continue
+			}
+		}
+	}
+
+	// Create the final results array in same order as requested keys
+	results := make([]*v1.Result, 0, len(keys))
+	for _, key := range keys {
+		if result, found := resultsByKey[key]; found {
+			// We found this key in one of the batches
+			results = append(results, result)
+		} else {
+			// Key was not found in any batch
+			notFound := &v1.Result{}
+			notFound.SetNotFound(true)
+			results = append(results, notFound)
 		}
 	}
 
 	// Create the response
 	resp := &v1.GetResponse{}
-	resp.SetKeys(foundKeys)
-	resp.SetValues(foundValues)
+	resp.SetResults(results)
 
 	return connect.NewResponse(resp), nil
 }

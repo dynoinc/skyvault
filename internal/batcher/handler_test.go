@@ -60,14 +60,18 @@ func TestSingleWrite(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, batches)
 
-	_, err = handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
+	req := v1.BatchWriteRequest_builder{
 		Writes: []*v1.WriteRequest{
-			v1.WriteRequest_builder{
-				Key: []byte("key1"),
-				Put: []byte("value1"),
-			}.Build(),
+			func() *v1.WriteRequest {
+				req := v1.WriteRequest_builder{}.Build()
+				req.SetKey("key1")
+				req.SetPut([]byte("value1"))
+				return req
+			}(),
 		},
-	}.Build()))
+	}.Build()
+
+	_, err = handler.BatchWrite(ctx, connect.NewRequest(req))
 	require.NoError(t, err)
 
 	batches, err = db.GetAllL0Batches(ctx)
@@ -80,34 +84,40 @@ func TestBatchBySize(t *testing.T) {
 	ctx := t.Context()
 
 	// First request with a record of size 15 bytes
-	_, err := handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
+	req1 := v1.BatchWriteRequest_builder{
 		Writes: []*v1.WriteRequest{
-			v1.WriteRequest_builder{
-				Key: []byte("key1"),
-				Put: []byte("value12345678"), // 15 bytes total (4 + 11)
-			}.Build(),
+			func() *v1.WriteRequest {
+				req := v1.WriteRequest_builder{}.Build()
+				req.SetKey("key1")
+				req.SetPut([]byte("value12345678")) // 15 bytes total (4 + 11)
+				return req
+			}(),
 		},
-	}.Build()))
+	}.Build()
+
+	_, err := handler.BatchWrite(ctx, connect.NewRequest(req1))
 	require.NoError(t, err)
 
 	// Second request that will push it over the limit (MaxBatchBytes = 20)
 	// This should create a second batch
-	_, err = handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
+	req2 := v1.BatchWriteRequest_builder{
 		Writes: []*v1.WriteRequest{
-			v1.WriteRequest_builder{
-				Key: []byte("key2"),
-				Put: []byte("value2"), // 10 bytes total (4 + 6)
-			}.Build(),
+			func() *v1.WriteRequest {
+				req := v1.WriteRequest_builder{}.Build()
+				req.SetKey("key2")
+				req.SetPut([]byte("value2")) // 10 bytes total (4 + 6)
+				return req
+			}(),
 		},
-	}.Build()))
+	}.Build()
+
+	_, err = handler.BatchWrite(ctx, connect.NewRequest(req2))
 	require.NoError(t, err)
 
-	// Give some time for batches to be processed
-	time.Sleep(150 * time.Millisecond)
-
+	// Verify two batches were created
 	batches, err := db.GetAllL0Batches(ctx)
 	require.NoError(t, err)
-	require.Len(t, batches, 2, "Expected 2 batches, got %d", len(batches))
+	require.Len(t, batches, 2)
 }
 
 func TestGracefulShutdown(t *testing.T) {
@@ -116,14 +126,17 @@ func TestGracefulShutdown(t *testing.T) {
 
 	errCh := make(chan error)
 	go func() {
-		_, err := handler.BatchWrite(ctx, connect.NewRequest(v1.BatchWriteRequest_builder{
+		req := v1.BatchWriteRequest_builder{
 			Writes: []*v1.WriteRequest{
-				v1.WriteRequest_builder{
-					Key: []byte("key5"),
-					Put: []byte("value5"),
-				}.Build(),
+				func() *v1.WriteRequest {
+					req := v1.WriteRequest_builder{}.Build()
+					req.SetKey("key5")
+					req.SetPut([]byte("value5"))
+					return req
+				}(),
 			},
-		}.Build()))
+		}.Build()
+		_, err := handler.BatchWrite(ctx, connect.NewRequest(req))
 		errCh <- err
 	}()
 	require.NoError(t, <-errCh)

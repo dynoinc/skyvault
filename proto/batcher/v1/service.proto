@@ -13,7 +13,7 @@ message BatchWriteRequest {
 }
 
 message WriteRequest {
-  bytes key = 1;
+  string key = 1;
 
   oneof operation {
     bytes put = 2;

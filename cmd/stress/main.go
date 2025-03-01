@@ -151,9 +151,11 @@ func stressBatcher(ctx context.Context, cfg config, m *metrics) {
 		copy(customKey, key)
 		// Make each key unique
 		customKey[0] = byte(i)
+		// Convert byte slice to string pointer for the Key field
+		keyStr := string(customKey)
 
 		writes[i] = v1.WriteRequest_builder{
-			Key: customKey,
+			Key: &keyStr,
 			Put: value,
 		}.Build()
 	}

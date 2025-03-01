@@ -1,8 +1,8 @@
 package recordio
 
 import (
-	"bytes"
 	"slices"
+	"strings"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 func WriteRecords(records []Record) []byte {
 	// Sort records by key
 	slices.SortFunc(records, func(a, b Record) int {
-		return bytes.Compare(a.Key, b.Key)
+		return strings.Compare(a.Key, b.Key)
 	})
 
 	// Deduplicate records
@@ -43,7 +43,7 @@ func WriteRecords(records []Record) []byte {
 		buf = append(buf, byte(keyLen))
 
 		// Write key
-		buf = append(buf, r.Key...)
+		buf = append(buf, []byte(r.Key)...)
 
 		if !r.Tombstone {
 			// Write value length
@@ -64,7 +64,7 @@ func deduplicateRecords(records []Record) []Record {
 	// Since records are sorted, we can just keep the first record for each key
 	result := make([]Record, 0, len(records))
 	for i := 0; i < len(records); i++ {
-		if i == 0 || !bytes.Equal(records[i].Key, records[i-1].Key) {
+		if i == 0 || records[i].Key != records[i-1].Key {
 			result = append(result, records[i])
 		}
 	}

@@ -12,6 +12,7 @@ tool (
 
 require (
 	connectrpc.com/connect v1.18.1
+	connectrpc.com/grpchealth v1.3.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/earthboundkid/versioninfo/v2 v2.24.1
 	github.com/golang-migrate/migrate/v4 v4.18.2
@@ -50,7 +51,6 @@ require (
 	buf.build/go/protoyaml v0.3.1 // indirect
 	buf.build/go/spdx v0.2.0 // indirect
 	cel.dev/expr v0.19.2 // indirect
-	connectrpc.com/grpchealth v1.3.0 // indirect
 	connectrpc.com/otelconnect v0.7.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect

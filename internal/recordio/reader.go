@@ -4,7 +4,7 @@ import "iter"
 
 // Record represents a single key-value record
 type Record struct {
-	Key       []byte
+	Key       string
 	Value     []byte
 	Tombstone bool
 }
@@ -28,7 +28,7 @@ func Records(data []byte) iter.Seq[Record] {
 			if pos+keyLen > len(data) {
 				return
 			}
-			key := data[pos : pos+keyLen]
+			key := string(data[pos : pos+keyLen])
 			pos += keyLen
 
 			if tombstone {
