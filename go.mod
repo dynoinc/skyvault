@@ -29,6 +29,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/riverqueue/river v0.18.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.18.0
+	github.com/riverqueue/river/rivertype v0.18.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/thanos-io/objstore v0.0.0-20250227082639-3f8838fdd5a2
@@ -192,7 +193,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/river/riverdriver v0.18.0 // indirect
 	github.com/riverqueue/river/rivershared v0.18.0 // indirect
-	github.com/riverqueue/river/rivertype v0.18.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect

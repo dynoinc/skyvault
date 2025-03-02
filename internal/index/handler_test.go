@@ -333,15 +333,15 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	batches := []database.L0Batch{
 		{
 			ID:   3,
-			Path: "batch3",
+			Path: "l0_batches/batch3",
 		},
 		{
 			ID:   2,
-			Path: "batch2",
+			Path: "l0_batches/batch2",
 		},
 		{
 			ID:   1,
-			Path: "batch1",
+			Path: "l0_batches/batch1",
 		},
 	}
 
