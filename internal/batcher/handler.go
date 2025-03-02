@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"sort"
 	"time"
 
@@ -219,13 +220,13 @@ func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) err
 	}
 
 	// Calculate size bytes using ComputeSize
-	sizeBytes := int64(recordio.ComputeSize(records))
+	sizeBytes := int64(recordio.ComputeSize(slices.Values(records)))
 
 	minKey := records[0].Key
 	maxKey := records[len(records)-1].Key
 
 	// Write records to buffer
-	buf := recordio.WriteRecords(records)
+	buf := recordio.WriteRecords(slices.Values(records))
 
 	// Generate a short UUID for the batch
 	id := shortuuid.New()

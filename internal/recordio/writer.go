@@ -1,6 +1,9 @@
 package recordio
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"iter"
+)
 
 const (
 	tombstoneBit   = 1         // Use lowest bit for tombstone flag
@@ -8,14 +11,14 @@ const (
 )
 
 // ComputeSize calculates the size in bytes of the recordio file after serialization
-func ComputeSize(records []Record) int {
+func ComputeSize(records iter.Seq[Record]) int {
 	buf := make([]byte, binary.MaxVarintLen64)
 
 	// version
 	versionBytes := binary.PutUvarint(buf, currentVersion)
 	size := versionBytes
 
-	for _, r := range records {
+	for r := range records {
 		// Key length with tombstone flag
 		keyLen := uint64(len(r.Key) << 1)
 		if r.Tombstone {
@@ -39,7 +42,7 @@ func ComputeSize(records []Record) int {
 }
 
 // WriteRecords takes a slice of records and writes them to a buffer
-func WriteRecords(records []Record) []byte {
+func WriteRecords(records iter.Seq[Record]) []byte {
 	// Pre-calculate buffer size
 	size := ComputeSize(records)
 	buf := make([]byte, 0, size)
@@ -47,7 +50,7 @@ func WriteRecords(records []Record) []byte {
 	// version
 	buf = binary.AppendUvarint(buf, currentVersion)
 
-	for _, r := range records {
+	for r := range records {
 		// Write key length with tombstone bit
 		keyLen := uint64(len(r.Key) << 1)
 		if r.Tombstone {

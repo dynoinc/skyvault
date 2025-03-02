@@ -32,12 +32,28 @@ func (q *Queries) AddL0Batch(ctx context.Context, arg AddL0BatchParams) (int64, 
 	return id, err
 }
 
-const getAllL0Batches = `-- name: GetAllL0Batches :many
+const deleteL0Batches = `-- name: DeleteL0Batches :exec
+DELETE FROM l0_batches
+WHERE id = ANY($1::bigint[])
+  AND status = $2::text
+`
+
+type DeleteL0BatchesParams struct {
+	BatchIds      []int64
+	CurrentStatus string
+}
+
+func (q *Queries) DeleteL0Batches(ctx context.Context, arg DeleteL0BatchesParams) error {
+	_, err := q.db.Exec(ctx, deleteL0Batches, arg.BatchIds, arg.CurrentStatus)
+	return err
+}
+
+const getL0Batches = `-- name: GetL0Batches :many
 SELECT id, path, size_bytes, min_key, max_key, status, created_at FROM l0_batches
 `
 
-func (q *Queries) GetAllL0Batches(ctx context.Context) ([]L0Batch, error) {
-	rows, err := q.db.Query(ctx, getAllL0Batches)
+func (q *Queries) GetL0Batches(ctx context.Context) ([]L0Batch, error) {
+	rows, err := q.db.Query(ctx, getL0Batches)
 	if err != nil {
 		return nil, err
 	}
@@ -64,16 +80,55 @@ func (q *Queries) GetAllL0Batches(ctx context.Context) ([]L0Batch, error) {
 	return items, nil
 }
 
-const lockL0Batches = `-- name: LockL0Batches :one
-UPDATE l0_batches
-SET status = 'LOCKED'
+const getL0BatchesByID = `-- name: GetL0BatchesByID :many
+SELECT id, path, size_bytes, min_key, max_key, status, created_at FROM l0_batches
 WHERE id = ANY($1::bigint[])
-  AND status = 'ACTIVE'
+`
+
+func (q *Queries) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]L0Batch, error) {
+	rows, err := q.db.Query(ctx, getL0BatchesByID, batchIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []L0Batch
+	for rows.Next() {
+		var i L0Batch
+		if err := rows.Scan(
+			&i.ID,
+			&i.Path,
+			&i.SizeBytes,
+			&i.MinKey,
+			&i.MaxKey,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateL0BatchesStatus = `-- name: UpdateL0BatchesStatus :one
+UPDATE l0_batches
+SET status = $1::text
+WHERE id = ANY($2::bigint[])
+  AND status = $3::text
 RETURNING count(*)
 `
 
-func (q *Queries) LockL0Batches(ctx context.Context, batchIds []int64) (int64, error) {
-	row := q.db.QueryRow(ctx, lockL0Batches, batchIds)
+type UpdateL0BatchesStatusParams struct {
+	NewStatus     string
+	BatchIds      []int64
+	CurrentStatus string
+}
+
+func (q *Queries) UpdateL0BatchesStatus(ctx context.Context, arg UpdateL0BatchesStatusParams) (int64, error) {
+	row := q.db.QueryRow(ctx, updateL0BatchesStatus, arg.NewStatus, arg.BatchIds, arg.CurrentStatus)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

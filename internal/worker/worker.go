@@ -38,7 +38,6 @@ func NewHandler(
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, background.NewMergeL0BatchesWorker(db, objstore))
-
 	riverClient, err := river.NewClient(riverpgxv5.New(db), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {

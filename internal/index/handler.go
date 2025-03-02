@@ -208,7 +208,7 @@ func (h *handler) Get(
 	}
 
 	// Get all l0 batches from the database
-	l0Batches, err := h.db.GetAllL0Batches(ctx)
+	l0Batches, err := h.db.GetL0Batches(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("error retrieving l0 batches: %w", err))
 	}

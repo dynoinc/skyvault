@@ -56,32 +56,61 @@ func (mr *MockQuerierMockRecorder) AddL0Batch(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddL0Batch", reflect.TypeOf((*MockQuerier)(nil).AddL0Batch), ctx, arg)
 }
 
-// GetAllL0Batches mocks base method.
-func (m *MockQuerier) GetAllL0Batches(ctx context.Context) ([]database.L0Batch, error) {
+// DeleteL0Batches mocks base method.
+func (m *MockQuerier) DeleteL0Batches(ctx context.Context, arg database.DeleteL0BatchesParams) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllL0Batches", ctx)
+	ret := m.ctrl.Call(m, "DeleteL0Batches", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteL0Batches indicates an expected call of DeleteL0Batches.
+func (mr *MockQuerierMockRecorder) DeleteL0Batches(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteL0Batches", reflect.TypeOf((*MockQuerier)(nil).DeleteL0Batches), ctx, arg)
+}
+
+// GetL0Batches mocks base method.
+func (m *MockQuerier) GetL0Batches(ctx context.Context) ([]database.L0Batch, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetL0Batches", ctx)
 	ret0, _ := ret[0].([]database.L0Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAllL0Batches indicates an expected call of GetAllL0Batches.
-func (mr *MockQuerierMockRecorder) GetAllL0Batches(ctx any) *gomock.Call {
+// GetL0Batches indicates an expected call of GetL0Batches.
+func (mr *MockQuerierMockRecorder) GetL0Batches(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllL0Batches", reflect.TypeOf((*MockQuerier)(nil).GetAllL0Batches), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0Batches", reflect.TypeOf((*MockQuerier)(nil).GetL0Batches), ctx)
 }
 
-// LockL0Batches mocks base method.
-func (m *MockQuerier) LockL0Batches(ctx context.Context, batchIds []int64) (int64, error) {
+// GetL0BatchesByID mocks base method.
+func (m *MockQuerier) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]database.L0Batch, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockL0Batches", ctx, batchIds)
+	ret := m.ctrl.Call(m, "GetL0BatchesByID", ctx, batchIds)
+	ret0, _ := ret[0].([]database.L0Batch)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetL0BatchesByID indicates an expected call of GetL0BatchesByID.
+func (mr *MockQuerierMockRecorder) GetL0BatchesByID(ctx, batchIds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0BatchesByID", reflect.TypeOf((*MockQuerier)(nil).GetL0BatchesByID), ctx, batchIds)
+}
+
+// UpdateL0BatchesStatus mocks base method.
+func (m *MockQuerier) UpdateL0BatchesStatus(ctx context.Context, arg database.UpdateL0BatchesStatusParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateL0BatchesStatus", ctx, arg)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// LockL0Batches indicates an expected call of LockL0Batches.
-func (mr *MockQuerierMockRecorder) LockL0Batches(ctx, batchIds any) *gomock.Call {
+// UpdateL0BatchesStatus indicates an expected call of UpdateL0BatchesStatus.
+func (mr *MockQuerierMockRecorder) UpdateL0BatchesStatus(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockL0Batches", reflect.TypeOf((*MockQuerier)(nil).LockL0Batches), ctx, batchIds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateL0BatchesStatus", reflect.TypeOf((*MockQuerier)(nil).UpdateL0BatchesStatus), ctx, arg)
 }

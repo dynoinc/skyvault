@@ -104,7 +104,11 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	qtx := database.New(tx)
 
 	// Lock all these batches and insert job in 1 txn.
-	locked, err := qtx.LockL0Batches(h.ctx, batchesToMerge)
+	locked, err := qtx.UpdateL0BatchesStatus(h.ctx, database.UpdateL0BatchesStatusParams{
+		BatchIds:      batchesToMerge,
+		CurrentStatus: "ACTIVE",
+		NewStatus:     "LOCKED",
+	})
 	if err != nil {
 		return fmt.Errorf("failed to lock L0 batches: %w", err)
 	}
@@ -131,8 +135,7 @@ func (h *handler) processLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			// Read all the L0 batches from the database
-			l0Batches, err := database.New(h.db).GetAllL0Batches(h.ctx)
+			l0Batches, err := database.New(h.db).GetL0Batches(h.ctx)
 			if err != nil {
 				slog.ErrorContext(h.ctx, "failed to get all L0 batches", "error", err)
 				continue

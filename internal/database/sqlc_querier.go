@@ -10,8 +10,10 @@ import (
 
 type Querier interface {
 	AddL0Batch(ctx context.Context, arg AddL0BatchParams) (int64, error)
-	GetAllL0Batches(ctx context.Context) ([]L0Batch, error)
-	LockL0Batches(ctx context.Context, batchIds []int64) (int64, error)
+	DeleteL0Batches(ctx context.Context, arg DeleteL0BatchesParams) error
+	GetL0Batches(ctx context.Context) ([]L0Batch, error)
+	GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]L0Batch, error)
+	UpdateL0BatchesStatus(ctx context.Context, arg UpdateL0BatchesStatusParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

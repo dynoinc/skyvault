@@ -2,6 +2,7 @@ package recordio
 
 import (
 	"encoding/binary"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,7 +11,7 @@ import (
 func TestVersionEncoding(t *testing.T) {
 	// Create an empty record set
 	records := []Record{}
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 
 	// Even with no records, we should have a version
 	require.NotEmpty(t, data)
@@ -29,10 +30,10 @@ func TestComputeSize(t *testing.T) {
 	}
 
 	// Compute expected size
-	calculatedSize := ComputeSize(records)
+	calculatedSize := ComputeSize(slices.Values(records))
 
 	// Write records and check actual size
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 	require.Equal(t, len(data), calculatedSize)
 }
 
@@ -43,7 +44,7 @@ func TestWriteAndReadSingleRecord(t *testing.T) {
 	}}
 
 	// Write records
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 
 	// Read and verify
 	var readRecords []Record
@@ -61,7 +62,7 @@ func TestWriteAndReadMultipleRecords(t *testing.T) {
 		{Key: "key3", Value: []byte("value3")},
 	}
 
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 	var readRecords []Record
 	for r := range Records(data) {
 		readRecords = append(readRecords, r)
@@ -77,7 +78,7 @@ func TestDuplicateKeys(t *testing.T) {
 		{Key: "key1", Value: []byte("value3")},
 	}
 
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 	var readRecords []Record
 	for r := range Records(data) {
 		readRecords = append(readRecords, r)
@@ -104,7 +105,7 @@ func TestTombstones(t *testing.T) {
 		{Key: "key3", Value: []byte("value2")},
 	}
 
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 	var readRecords []Record
 	for r := range Records(data) {
 		readRecords = append(readRecords, r)
@@ -130,7 +131,7 @@ func TestPreservesOrder(t *testing.T) {
 		{Key: "key2", Value: []byte("value2")},
 	}
 
-	data := WriteRecords(records)
+	data := WriteRecords(slices.Values(records))
 	var readRecords []Record
 	for r := range Records(data) {
 		readRecords = append(readRecords, r)
