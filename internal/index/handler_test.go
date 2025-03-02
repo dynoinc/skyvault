@@ -60,7 +60,7 @@ func TestHandler_Get(t *testing.T) {
 
 	// Mock the database response
 	mockDB.EXPECT().
-		GetAllL0Batches(gomock.Any()).
+		GetL0Batches(gomock.Any()).
 		Return([]database.L0Batch{
 			{
 				ID:   1,
@@ -127,7 +127,7 @@ func TestValuePrecedence(t *testing.T) {
 
 	// Setup database mock to return our batches
 	mockDB.EXPECT().
-		GetAllL0Batches(gomock.Any()).
+		GetL0Batches(gomock.Any()).
 		Return([]database.L0Batch{batch1, batch2}, nil)
 
 	// Create the handler
@@ -227,7 +227,7 @@ func TestDatabaseError(t *testing.T) {
 
 	// Setup database mock to return an error
 	mockDB.EXPECT().
-		GetAllL0Batches(gomock.Any()).
+		GetL0Batches(gomock.Any()).
 		Return([]database.L0Batch{}, assert.AnError)
 
 	// Create the handler
@@ -275,7 +275,7 @@ func TestCacheServiceError(t *testing.T) {
 
 	// Setup database mock
 	mockDB.EXPECT().
-		GetAllL0Batches(gomock.Any()).
+		GetL0Batches(gomock.Any()).
 		Return([]database.L0Batch{batch1}, nil)
 
 	// Setup mock cache client that will return an error for both primary and fallback endpoints
@@ -347,7 +347,7 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 
 	// Setup database mock to return our batches
 	mockDB.EXPECT().
-		GetAllL0Batches(gomock.Any()).
+		GetL0Batches(gomock.Any()).
 		Return(batches, nil)
 
 	// Create the handler

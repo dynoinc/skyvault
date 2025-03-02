@@ -55,17 +55,17 @@ func TestSingleWrite(t *testing.T) {
 	ctx := t.Context()
 
 	// Setup expectations for the first GetAllL0Batches call
-	db.EXPECT().GetAllL0Batches(gomock.Any()).Return([]database.L0Batch{}, nil)
+	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{}, nil)
 
 	// Expect AddL0Batch to be called once
 	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil)
 
 	// Setup expectations for the second GetAllL0Batches call
-	db.EXPECT().GetAllL0Batches(gomock.Any()).Return([]database.L0Batch{
+	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{
 		{ID: 1, Path: "some/path"},
 	}, nil)
 
-	batches, err := db.GetAllL0Batches(ctx)
+	batches, err := db.GetL0Batches(ctx)
 	require.NoError(t, err)
 	require.Empty(t, batches)
 
@@ -83,7 +83,7 @@ func TestSingleWrite(t *testing.T) {
 	_, err = handler.BatchWrite(ctx, connect.NewRequest(req))
 	require.NoError(t, err)
 
-	batches, err = db.GetAllL0Batches(ctx)
+	batches, err = db.GetL0Batches(ctx)
 	require.NoError(t, err)
 	require.Len(t, batches, 1)
 }
@@ -96,11 +96,11 @@ func TestBatchBySize(t *testing.T) {
 	finalCallCtx := ctx
 
 	// Setup expectations - use AnyTimes but don't match the finalCallCtx
-	db.EXPECT().GetAllL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
+	db.EXPECT().GetL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
 	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil).AnyTimes()
 
 	// For the final check, match only the finalCallCtx
-	db.EXPECT().GetAllL0Batches(finalCallCtx).Return([]database.L0Batch{
+	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
 		{ID: 1, Path: "some/path"},
 		{ID: 2, Path: "another/path"},
 	}, nil)
@@ -137,7 +137,7 @@ func TestBatchBySize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify two batches were created
-	batches, err := db.GetAllL0Batches(finalCallCtx)
+	batches, err := db.GetL0Batches(finalCallCtx)
 	require.NoError(t, err)
 	require.Len(t, batches, 2)
 }
@@ -150,11 +150,11 @@ func TestGracefulShutdown(t *testing.T) {
 	finalCallCtx := ctx
 
 	// Setup expectations
-	db.EXPECT().GetAllL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
+	db.EXPECT().GetL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
 	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil).AnyTimes()
 
 	// For the final check
-	db.EXPECT().GetAllL0Batches(finalCallCtx).Return([]database.L0Batch{
+	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
 		{ID: 1, Path: "some/path"},
 	}, nil)
 
@@ -175,7 +175,7 @@ func TestGracefulShutdown(t *testing.T) {
 	}()
 	require.NoError(t, <-errCh)
 
-	batches, err := db.GetAllL0Batches(finalCallCtx)
+	batches, err := db.GetL0Batches(finalCallCtx)
 	require.NoError(t, err)
 	require.Len(t, batches, 1)
 

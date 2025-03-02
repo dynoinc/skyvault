@@ -3,6 +3,7 @@ package cache
 import (
 	"bytes"
 	"context"
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -26,7 +27,7 @@ func TestHandler_Get(t *testing.T) {
 		{Key: "deleted-key", Tombstone: true},
 	}
 
-	data := recordio.WriteRecords(records)
+	data := recordio.WriteRecords(slices.Values(records))
 
 	// Upload test data to the mock bucket
 	objPath := "test/object.data"
