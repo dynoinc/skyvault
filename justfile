@@ -38,6 +38,8 @@ k8s-dev:
     kubectl rollout restart deployment/skyvault-batcher
     kubectl rollout restart deployment/skyvault-cache
     kubectl rollout restart deployment/skyvault-index
+    kubectl rollout restart deployment/skyvault-worker
+    kubectl rollout restart deployment/skyvault-orchestrator
     
     # Show running pods
     kubectl get pods
