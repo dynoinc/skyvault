@@ -37,6 +37,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /skyvault
+            - --debug
           env:
             - name: SKYVAULT_ADDR
               value: "0.0.0.0:{{ .Values.worker.port }}"
@@ -70,7 +71,7 @@ spec:
               port: {{ .Values.worker.port }}
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /version
               port: {{ .Values.worker.port }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
