@@ -63,3 +63,18 @@ func (q *Queries) GetAllL0Batches(ctx context.Context) ([]L0Batch, error) {
 	}
 	return items, nil
 }
+
+const lockL0Batches = `-- name: LockL0Batches :one
+UPDATE l0_batches
+SET status = 'LOCKED'
+WHERE id = ANY($1::bigint[])
+  AND status = 'ACTIVE'
+RETURNING count(*)
+`
+
+func (q *Queries) LockL0Batches(ctx context.Context, batchIds []int64) (int64, error) {
+	row := q.db.QueryRow(ctx, lockL0Batches, batchIds)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}

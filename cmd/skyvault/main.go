@@ -204,7 +204,7 @@ func main() {
 	}
 
 	if c.Worker.Enabled {
-		workerHandler, err := worker.NewHandler(ctx, c.Worker, db)
+		workerHandler, err := worker.NewHandler(ctx, c.Worker, db, store)
 		if err != nil {
 			slog.ErrorContext(ctx, "setting up worker", "error", err)
 			os.Exit(1)

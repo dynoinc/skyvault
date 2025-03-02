@@ -70,3 +70,18 @@ func (mr *MockQuerierMockRecorder) GetAllL0Batches(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllL0Batches", reflect.TypeOf((*MockQuerier)(nil).GetAllL0Batches), ctx)
 }
+
+// LockL0Batches mocks base method.
+func (m *MockQuerier) LockL0Batches(ctx context.Context, batchIds []int64) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockL0Batches", ctx, batchIds)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockL0Batches indicates an expected call of LockL0Batches.
+func (mr *MockQuerierMockRecorder) LockL0Batches(ctx, batchIds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockL0Batches", reflect.TypeOf((*MockQuerier)(nil).LockL0Batches), ctx, batchIds)
+}
