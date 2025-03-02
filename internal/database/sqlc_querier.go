@@ -9,7 +9,7 @@ import (
 )
 
 type Querier interface {
-	AddL0Batch(ctx context.Context, path string) (int64, error)
+	AddL0Batch(ctx context.Context, arg AddL0BatchParams) (int64, error)
 	GetAllL0Batches(ctx context.Context) ([]L0Batch, error)
 }
 

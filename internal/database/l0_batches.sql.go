@@ -10,18 +10,30 @@ import (
 )
 
 const addL0Batch = `-- name: AddL0Batch :one
-INSERT INTO l0_batches (path) VALUES ($1) RETURNING id
+INSERT INTO l0_batches (path, size_bytes, min_key, max_key) VALUES ($1, $2, $3, $4) RETURNING id
 `
 
-func (q *Queries) AddL0Batch(ctx context.Context, path string) (int64, error) {
-	row := q.db.QueryRow(ctx, addL0Batch, path)
+type AddL0BatchParams struct {
+	Path      string
+	SizeBytes int64
+	MinKey    string
+	MaxKey    string
+}
+
+func (q *Queries) AddL0Batch(ctx context.Context, arg AddL0BatchParams) (int64, error) {
+	row := q.db.QueryRow(ctx, addL0Batch,
+		arg.Path,
+		arg.SizeBytes,
+		arg.MinKey,
+		arg.MaxKey,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
 const getAllL0Batches = `-- name: GetAllL0Batches :many
-SELECT id, path, status, created_at FROM l0_batches
+SELECT id, path, size_bytes, min_key, max_key, status, created_at FROM l0_batches
 `
 
 func (q *Queries) GetAllL0Batches(ctx context.Context) ([]L0Batch, error) {
@@ -36,6 +48,9 @@ func (q *Queries) GetAllL0Batches(ctx context.Context) ([]L0Batch, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Path,
+			&i.SizeBytes,
+			&i.MinKey,
+			&i.MaxKey,
 			&i.Status,
 			&i.CreatedAt,
 		); err != nil {

@@ -11,6 +11,9 @@ import (
 type L0Batch struct {
 	ID        int64
 	Path      string
+	SizeBytes int64
+	MinKey    string
+	MaxKey    string
 	Status    *string
 	CreatedAt pgtype.Timestamptz
 }

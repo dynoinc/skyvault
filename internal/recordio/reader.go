@@ -1,6 +1,10 @@
 package recordio
 
-import "iter"
+import (
+	"encoding/binary"
+	"errors"
+	"iter"
+)
 
 // Record represents a single key-value record
 type Record struct {
@@ -9,27 +13,50 @@ type Record struct {
 	Tombstone bool
 }
 
+// ErrUnsupportedVersion is returned when the file format version is not supported
+var ErrUnsupportedVersion = errors.New("unsupported recordio version")
+
 // Records returns an iterator over the records in the data
 func Records(data []byte) iter.Seq[Record] {
 	return func(yield func(Record) bool) {
-		pos := 0
+		if len(data) == 0 {
+			return
+		}
+
+		// Read version varint
+		version, n := binary.Uvarint(data)
+		if n <= 0 {
+			// Invalid varint
+			return
+		}
+		pos := n // Start after the version varint
+
+		// Currently we only support version 1
+		if version != currentVersion {
+			// We can't yield an error directly in the iterator,
+			// so we yield nothing if version is unsupported
+			return
+		}
+
 		for pos < len(data) {
-			// Read key length and tombstone bit
-			if pos >= len(data) {
+			// Read key length and tombstone bit as varint
+			keyLen, bytesRead := binary.Uvarint(data[pos:])
+			if bytesRead <= 0 {
+				// Invalid varint
 				return
 			}
-			b := data[pos]
-			pos++
+			pos += bytesRead
 
-			keyLen := int(b >> 1)
-			tombstone := (b & tombstoneBit) != 0
+			// Extract tombstone bit and key length
+			tombstone := (keyLen & tombstoneBit) != 0
+			keyLenValue := int(keyLen >> 1)
 
 			// Read key
-			if pos+keyLen > len(data) {
+			if pos+keyLenValue > len(data) {
 				return
 			}
-			key := string(data[pos : pos+keyLen])
-			pos += keyLen
+			key := string(data[pos : pos+keyLenValue])
+			pos += keyLenValue
 
 			if tombstone {
 				if !yield(Record{Key: key, Tombstone: true}) {
@@ -38,19 +65,20 @@ func Records(data []byte) iter.Seq[Record] {
 				continue
 			}
 
-			// Read value length
-			if pos >= len(data) {
+			// Read value length as varint
+			valueLen, bytesRead := binary.Uvarint(data[pos:])
+			if bytesRead <= 0 {
+				// Invalid varint
 				return
 			}
-			valueLen := int(data[pos])
-			pos++
+			pos += bytesRead
 
 			// Read value
-			if pos+valueLen > len(data) {
+			if pos+int(valueLen) > len(data) {
 				return
 			}
-			value := data[pos : pos+valueLen]
-			pos += valueLen
+			value := data[pos : pos+int(valueLen)]
+			pos += int(valueLen)
 
 			if !yield(Record{Key: key, Value: value}) {
 				return

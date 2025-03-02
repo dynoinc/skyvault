@@ -1,44 +1,23 @@
 package batcher
 
 import (
-	"context"
-	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/dynoinc/skyvault/internal/storage"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
+	"go.uber.org/mock/gomock"
 )
 
-type mockQuerier struct {
-	batches []database.L0Batch
-	mu      sync.Mutex
-}
-
-func (m *mockQuerier) AddL0Batch(ctx context.Context, path string) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	id := int64(len(m.batches) + 1)
-	m.batches = append(m.batches, database.L0Batch{
-		ID:   id,
-		Path: path,
-	})
-	return id, nil
-}
-
-func (m *mockQuerier) GetAllL0Batches(ctx context.Context) ([]database.L0Batch, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.batches, nil
-}
-
-func newTestHandler(t *testing.T) (*handler, *mockQuerier, objstore.Bucket) {
+func newTestHandler(t *testing.T) (*handler, *mocks.MockQuerier, objstore.Bucket) {
 	ctx := t.Context()
-	db := &mockQuerier{}
+	ctrl := gomock.NewController(t)
+	db := mocks.NewMockQuerier(ctrl)
 	store, err := storage.New(ctx, "inmemory://")
 	require.NoError(t, err)
 
@@ -52,9 +31,39 @@ func newTestHandler(t *testing.T) (*handler, *mockQuerier, objstore.Bucket) {
 	return handler, db, store
 }
 
+func TestEmptyKey(t *testing.T) {
+	handler, _, _ := newTestHandler(t)
+	ctx := t.Context()
+
+	req := v1.BatchWriteRequest_builder{
+		Writes: []*v1.WriteRequest{
+			func() *v1.WriteRequest {
+				req := v1.WriteRequest_builder{}.Build()
+				req.SetKey("")
+				return req
+			}(),
+		},
+	}.Build()
+
+	_, err := handler.BatchWrite(ctx, connect.NewRequest(req))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "key is required")
+}
+
 func TestSingleWrite(t *testing.T) {
 	handler, db, _ := newTestHandler(t)
 	ctx := t.Context()
+
+	// Setup expectations for the first GetAllL0Batches call
+	db.EXPECT().GetAllL0Batches(gomock.Any()).Return([]database.L0Batch{}, nil)
+
+	// Expect AddL0Batch to be called once
+	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil)
+
+	// Setup expectations for the second GetAllL0Batches call
+	db.EXPECT().GetAllL0Batches(gomock.Any()).Return([]database.L0Batch{
+		{ID: 1, Path: "some/path"},
+	}, nil)
 
 	batches, err := db.GetAllL0Batches(ctx)
 	require.NoError(t, err)
@@ -82,6 +91,19 @@ func TestSingleWrite(t *testing.T) {
 func TestBatchBySize(t *testing.T) {
 	handler, db, _ := newTestHandler(t)
 	ctx := t.Context()
+
+	// Create a matcher that will only match the final call
+	finalCallCtx := ctx
+
+	// Setup expectations - use AnyTimes but don't match the finalCallCtx
+	db.EXPECT().GetAllL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
+	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil).AnyTimes()
+
+	// For the final check, match only the finalCallCtx
+	db.EXPECT().GetAllL0Batches(finalCallCtx).Return([]database.L0Batch{
+		{ID: 1, Path: "some/path"},
+		{ID: 2, Path: "another/path"},
+	}, nil)
 
 	// First request with a record of size 15 bytes
 	req1 := v1.BatchWriteRequest_builder{
@@ -115,7 +137,7 @@ func TestBatchBySize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify two batches were created
-	batches, err := db.GetAllL0Batches(ctx)
+	batches, err := db.GetAllL0Batches(finalCallCtx)
 	require.NoError(t, err)
 	require.Len(t, batches, 2)
 }
@@ -123,6 +145,18 @@ func TestBatchBySize(t *testing.T) {
 func TestGracefulShutdown(t *testing.T) {
 	handler, db, _ := newTestHandler(t)
 	ctx := t.Context()
+
+	// Create a matcher that will only match the final call
+	finalCallCtx := ctx
+
+	// Setup expectations
+	db.EXPECT().GetAllL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
+	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil).AnyTimes()
+
+	// For the final check
+	db.EXPECT().GetAllL0Batches(finalCallCtx).Return([]database.L0Batch{
+		{ID: 1, Path: "some/path"},
+	}, nil)
 
 	errCh := make(chan error)
 	go func() {
@@ -141,7 +175,7 @@ func TestGracefulShutdown(t *testing.T) {
 	}()
 	require.NoError(t, <-errCh)
 
-	batches, err := db.GetAllL0Batches(ctx)
+	batches, err := db.GetAllL0Batches(finalCallCtx)
 	require.NoError(t, err)
 	require.Len(t, batches, 1)
 

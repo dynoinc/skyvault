@@ -1,72 +1,73 @@
 package recordio
 
-import (
-	"slices"
-	"strings"
-)
+import "encoding/binary"
 
 const (
-	tombstoneBit = 1 // Use lowest bit for tombstone flag
+	tombstoneBit   = 1         // Use lowest bit for tombstone flag
+	currentVersion = uint64(1) // Current file format version
 )
 
-// WriteRecords takes a slice of records, sorts them by key, deduplicates them
-// and writes them to a buffer
-func WriteRecords(records []Record) []byte {
-	// Sort records by key
-	slices.SortFunc(records, func(a, b Record) int {
-		return strings.Compare(a.Key, b.Key)
-	})
+// ComputeSize calculates the size in bytes of the recordio file after serialization
+func ComputeSize(records []Record) int {
+	buf := make([]byte, binary.MaxVarintLen64)
 
-	// Deduplicate records
-	records = deduplicateRecords(records)
+	// version
+	versionBytes := binary.PutUvarint(buf, currentVersion)
+	size := versionBytes
 
-	// Pre-calculate buffer size to avoid reallocations
-	size := 0
 	for _, r := range records {
-		size += 1 // key length byte
+		// Key length with tombstone flag
+		keyLen := uint64(len(r.Key) << 1)
+		if r.Tombstone {
+			keyLen |= tombstoneBit
+		}
+
+		keyLenBytes := binary.PutUvarint(buf, keyLen)
+		size += keyLenBytes
 		size += len(r.Key)
+
 		if !r.Tombstone {
-			size += 1 // value length byte
+			// Value length
+			valueLen := uint64(len(r.Value))
+			valueLenBytes := binary.PutUvarint(buf, valueLen)
+			size += valueLenBytes
 			size += len(r.Value)
 		}
 	}
 
+	return size
+}
+
+// WriteRecords takes a slice of records and writes them to a buffer
+func WriteRecords(records []Record) []byte {
+	// Pre-calculate buffer size
+	size := ComputeSize(records)
 	buf := make([]byte, 0, size)
 
-	// Write records
+	// version
+	buf = binary.AppendUvarint(buf, currentVersion)
+
 	for _, r := range records {
 		// Write key length with tombstone bit
-		keyLen := (len(r.Key) << 1)
+		keyLen := uint64(len(r.Key) << 1)
 		if r.Tombstone {
 			keyLen |= tombstoneBit
 		}
-		buf = append(buf, byte(keyLen))
+
+		// Write key length as varint
+		buf = binary.AppendUvarint(buf, keyLen)
 
 		// Write key
 		buf = append(buf, []byte(r.Key)...)
 
 		if !r.Tombstone {
-			// Write value length
-			buf = append(buf, byte(len(r.Value)))
+			// Write value length as varint
+			buf = binary.AppendUvarint(buf, uint64(len(r.Value)))
+
 			// Write value
 			buf = append(buf, r.Value...)
 		}
 	}
 
 	return buf
-}
-
-func deduplicateRecords(records []Record) []Record {
-	if len(records) <= 1 {
-		return records
-	}
-
-	// Since records are sorted, we can just keep the first record for each key
-	result := make([]Record, 0, len(records))
-	for i := 0; i < len(records); i++ {
-		if i == 0 || records[i].Key != records[i-1].Key {
-			result = append(result, records[i])
-		}
-	}
-	return result
 }

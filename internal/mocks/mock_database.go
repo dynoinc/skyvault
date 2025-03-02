@@ -42,18 +42,18 @@ func (m *MockQuerier) EXPECT() *MockQuerierMockRecorder {
 }
 
 // AddL0Batch mocks base method.
-func (m *MockQuerier) AddL0Batch(ctx context.Context, path string) (int64, error) {
+func (m *MockQuerier) AddL0Batch(ctx context.Context, arg database.AddL0BatchParams) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddL0Batch", ctx, path)
+	ret := m.ctrl.Call(m, "AddL0Batch", ctx, arg)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddL0Batch indicates an expected call of AddL0Batch.
-func (mr *MockQuerierMockRecorder) AddL0Batch(ctx, path any) *gomock.Call {
+func (mr *MockQuerierMockRecorder) AddL0Batch(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddL0Batch", reflect.TypeOf((*MockQuerier)(nil).AddL0Batch), ctx, path)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddL0Batch", reflect.TypeOf((*MockQuerier)(nil).AddL0Batch), ctx, arg)
 }
 
 // GetAllL0Batches mocks base method.

@@ -3,8 +3,10 @@ package batcher
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"path"
+	"sort"
 	"time"
 
 	"connectrpc.com/connect"
@@ -78,6 +80,17 @@ func (h *handler) BatchWrite(
 	ctx context.Context,
 	req *connect.Request[v1.BatchWriteRequest],
 ) (*connect.Response[v1.BatchWriteResponse], error) {
+	if req.Msg.GetWrites() == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("writes is required"))
+	}
+
+	// reject empty key
+	for _, w := range req.Msg.GetWrites() {
+		if w.GetKey() == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("key is required"))
+		}
+	}
+
 	callback := make(chan error, 1)
 	wr := writeRequest{
 		req:      req.Msg,
@@ -183,6 +196,34 @@ func (h *handler) processLoop() {
 }
 
 func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) error {
+	// Sort records by key
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].Key < records[j].Key
+	})
+
+	// Deduplicate records - keep only the last occurrence of each key
+	if len(records) > 1 {
+		j := 0
+		for i := 1; i < len(records); i++ {
+			if records[i].Key != records[j].Key {
+				j++
+				if i != j {
+					records[j] = records[i]
+				}
+			} else {
+				// When keys match, overwrite the previous record
+				records[j] = records[i]
+			}
+		}
+		records = records[:j+1]
+	}
+
+	// Calculate size bytes using ComputeSize
+	sizeBytes := int64(recordio.ComputeSize(records))
+
+	minKey := records[0].Key
+	maxKey := records[len(records)-1].Key
+
 	// Write records to buffer
 	buf := recordio.WriteRecords(records)
 
@@ -196,7 +237,12 @@ func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) err
 	}
 
 	// Add record to database
-	if _, err := h.db.AddL0Batch(ctx, id); err != nil {
+	if _, err := h.db.AddL0Batch(ctx, database.AddL0BatchParams{
+		Path:      objPath,
+		SizeBytes: sizeBytes,
+		MinKey:    minKey,
+		MaxKey:    maxKey,
+	}); err != nil {
 		return fmt.Errorf("adding batch record: %w", err)
 	}
 

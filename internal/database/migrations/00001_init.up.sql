@@ -1,6 +1,9 @@
 CREATE TABLE IF NOT EXISTS l0_batches (
     id BIGSERIAL PRIMARY KEY,
     path TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL,
+    min_key TEXT NOT NULL,
+    max_key TEXT NOT NULL,
     status TEXT DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
