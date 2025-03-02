@@ -1,36 +1,56 @@
-# skyvault
+# SkyVault
 
 [![build](https://github.com/dynoinc/skyvault/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/dynoinc/skyvault/actions/workflows/build.yml)
 
-Objectstore backed key-value store
+SkyVault is a high-performance, scalable object-store backed key-value store designed for efficient data management and retrieval.
 
-## Features
+### Key Components
 
-### gRPC Reflection Support
+- **Batcher**: Efficiently batch operations to write to Objectstore
+- **Cache**: Fast in-memory access on the serving path
+- **Index**: Handles read requests and serves them uses cache
+- **Worker/Orchestrator**: Background jobs to compact/purge data in Objecstore
 
-SkyVault now includes gRPC reflection support via the [connectrpc/grpcreflect](https://github.com/connectrpc/grpcreflect-go) library. This enables tools like [grpcurl](https://github.com/fullstorydev/grpcurl) and [grpcui](https://github.com/fullstorydev/grpcui) to discover and interact with SkyVault's services without needing the protocol buffer definitions.
+## Technologies Used
 
-#### Using with grpcurl
+| Technology | Description |
+|------------|-------------|
+| [Connect](https://connectrpc.com/) | Type-safe APIs with Protobuf and gRPC |
+| [PostgreSQL](https://www.postgresql.org/) | Relational database (via [pgx](https://github.com/jackc/pgx)) |
+| [MinIO](https://min.io/) | S3-compatible object storage |
+| [Prometheus](https://prometheus.io/) | Monitoring and metrics |
+| [River](https://github.com/riverqueue/river) | Background job processing |
 
-Example:
+## Development
 
-```bash
-# List all available services
-grpcurl -plaintext localhost:5001 list
+### Prerequisites
 
-# Describe a specific service
-grpcurl -plaintext localhost:5001 describe batcher.v1.BatcherService
+- Go 1.24+
+- Docker, k8s and helm for local development
+- [Just](https://github.com/casey/just) command runner
 
-# Call a method
-grpcurl -plaintext -d '{"key": "example-key"}' localhost:5001 batcher.v1.BatcherService/Get
-```
+### Getting Started
 
-#### Using with grpcui
+1. Clone the repository
+2. Run `just k8s-dev` to start everything in k8s
+3. Run `just k8s-stress` to send some load
 
-Start the interactive web UI:
+## Contributing
 
-```bash
-grpcui -plaintext localhost:5001
-```
+Contributions to SkyVault are welcome! Here's how you can contribute:
 
-This will open a browser window with a UI for interacting with all SkyVault services.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure your code follows the project's style guidelines and includes appropriate tests.
+
+## Security
+
+See our [Security Policy](SECURITY.md) for reporting security vulnerabilities.
+
+## License
+
+This project is licensed under the terms in the [LICENSE](LICENSE) file.
