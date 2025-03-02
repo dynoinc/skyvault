@@ -114,11 +114,14 @@ func (q *Queries) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]L0B
 }
 
 const updateL0BatchesStatus = `-- name: UpdateL0BatchesStatus :one
-UPDATE l0_batches
-SET status = $1::text
-WHERE id = ANY($2::bigint[])
-  AND status = $3::text
-RETURNING count(*)
+WITH updated AS (
+  UPDATE l0_batches
+  SET status = $1::text
+  WHERE id = ANY($2::bigint[])
+    AND status = $3::text
+  RETURNING id
+)
+SELECT count(*) FROM updated
 `
 
 type UpdateL0BatchesStatusParams struct {

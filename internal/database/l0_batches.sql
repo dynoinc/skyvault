@@ -9,11 +9,14 @@ SELECT * FROM l0_batches
 WHERE id = ANY(@batch_ids::bigint[]);
 
 -- name: UpdateL0BatchesStatus :one
-UPDATE l0_batches
-SET status = @new_status::text
-WHERE id = ANY(@batch_ids::bigint[])
-  AND status = @current_status::text
-RETURNING count(*);
+WITH updated AS (
+  UPDATE l0_batches
+  SET status = @new_status::text
+  WHERE id = ANY(@batch_ids::bigint[])
+    AND status = @current_status::text
+  RETURNING id
+)
+SELECT count(*) FROM updated;
 
 -- name: DeleteL0Batches :exec
 DELETE FROM l0_batches

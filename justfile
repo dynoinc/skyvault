@@ -41,16 +41,21 @@ k8s-dev:
     kubectl rollout restart deployment/skyvault-worker
     kubectl rollout restart deployment/skyvault-orchestrator
     
+    # Wait for deployments to finish rolling out
+    kubectl rollout status -w deployment/skyvault-batcher
+    kubectl rollout status -w deployment/skyvault-cache
+    kubectl rollout status -w deployment/skyvault-index
+    kubectl rollout status -w deployment/skyvault-worker
+    kubectl rollout status -w deployment/skyvault-orchestrator
+    
     # Show running pods
     kubectl get pods
 
 k8s-reset:
-    # Uninstall existing Helm release
     helm uninstall skyvault || true
 
 k8s-logs:
-    # Tail logs for all components (batcher, index, and cache)
-    kubectl logs -f -l "app.kubernetes.io/component in (batcher,index,cache)" --max-log-requests 1000
+    kubectl logs -f -l "app.kubernetes.io/component in (batcher,index,cache,worker,orchestrator)" --max-log-requests 1000
 
 # Run stress test against the Kubernetes-deployed batcher service
 k8s-stress:

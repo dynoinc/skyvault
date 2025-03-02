@@ -14,6 +14,6 @@ type L0Batch struct {
 	SizeBytes int64
 	MinKey    string
 	MaxKey    string
-	Status    *string
+	Status    string
 	CreatedAt pgtype.Timestamptz
 }

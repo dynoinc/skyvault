@@ -78,7 +78,7 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	// Select the latest set of ACTIVE batches that make up max batch size
 	for _, batch := range l0Batches {
 		// Stop as soon as we find a non-active batch
-		if *batch.Status != "ACTIVE" {
+		if batch.Status != "ACTIVE" {
 			break
 		}
 

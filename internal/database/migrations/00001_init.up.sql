@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS l0_batches (
     size_bytes BIGINT NOT NULL,
     min_key TEXT NOT NULL,
     max_key TEXT NOT NULL,
-    status TEXT DEFAULT 'ACTIVE',
+    status TEXT DEFAULT 'ACTIVE' NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
