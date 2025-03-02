@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"path"
 	"sort"
 	"sync"
 	"time"
@@ -198,7 +197,7 @@ func (h *handler) addCacheServiceLocked(endpoint string) {
 }
 
 // Get retrieves values for requested keys by checking all l0_batches
-func (h *handler) Get(
+func (h *handler) BatchGet(
 	ctx context.Context,
 	req *connect.Request[v1.BatchGetRequest],
 ) (*connect.Response[v1.BatchGetResponse], error) {
@@ -234,9 +233,6 @@ func (h *handler) Get(
 			break
 		}
 
-		// Create the object path for this batch
-		objectPath := path.Join("l0_batches", batch.Path)
-
 		// Prepare the keys we still need to look for
 		keysToFind := make([]string, 0, len(remainingKeys))
 		for key := range remainingKeys {
@@ -252,14 +248,14 @@ func (h *handler) Get(
 			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("no cache services available"))
 		}
 
-		primary, fallback := h.ring.LocateKey([]byte(objectPath))
+		primary, fallback := h.ring.LocateKey([]byte(batch.Path))
 		primaryEndpoint := primary.String()
 		fallbackEndpoint := fallback.String()
 		h.ringMu.RUnlock()
 
 		// Try primary and fallback endpoints in order
 		cacheReq := connect.NewRequest(&cachev1.GetRequest{})
-		cacheReq.Msg.SetObjectPath(objectPath)
+		cacheReq.Msg.SetObjectPath(batch.Path)
 		cacheReq.Msg.SetKeys(keysToFind)
 
 		endpoints := []string{primaryEndpoint, fallbackEndpoint}

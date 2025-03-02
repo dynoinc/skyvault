@@ -89,7 +89,7 @@ func TestHandler_Get(t *testing.T) {
 	h.ringMu.Unlock()
 
 	// Call the handler method
-	resp, err := h.Get(context.Background(), req)
+	resp, err := h.BatchGet(context.Background(), req)
 
 	// Assert the response
 	assert.NoError(t, err)
@@ -163,7 +163,7 @@ func TestValuePrecedence(t *testing.T) {
 	// Batch 2 should not be queried since we found the key in batch1
 
 	// Call the handler
-	resp, err := h.Get(ctx, req)
+	resp, err := h.BatchGet(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -208,7 +208,7 @@ func TestEmptyKeyRequest(t *testing.T) {
 	req.Msg.SetKeys([]string{})
 
 	// Call the handler
-	resp, err := h.Get(ctx, req)
+	resp, err := h.BatchGet(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Msg)
@@ -249,7 +249,7 @@ func TestDatabaseError(t *testing.T) {
 	req.Msg.SetKeys([]string{"key1"})
 
 	// Call the handler
-	_, err := h.Get(ctx, req)
+	_, err := h.BatchGet(ctx, req)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error retrieving l0 batches")
 }
@@ -309,7 +309,7 @@ func TestCacheServiceError(t *testing.T) {
 	req.Msg.SetKeys([]string{"key1"})
 
 	// Call the handler
-	_, err := h.Get(ctx, req)
+	_, err := h.BatchGet(ctx, req)
 	// Should return an error since we can't process the batch
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cache services unavailable for batch 1")
@@ -439,7 +439,7 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	)
 
 	// Call the handler
-	resp, err := h.Get(ctx, req)
+	resp, err := h.BatchGet(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
