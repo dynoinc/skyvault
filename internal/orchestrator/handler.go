@@ -125,7 +125,7 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	}
 
 	slog.InfoContext(h.ctx, "scheduled merge job", "batchCount", len(batchesToMerge), "totalSize", totalSize)
-	return nil
+	return tx.Commit(h.ctx)
 }
 
 func (h *handler) processLoop() {

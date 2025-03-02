@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	v1connect "github.com/dynoinc/skyvault/gen/proto/worker/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/background"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/thanos-io/objstore"
 )
 
@@ -45,6 +47,9 @@ func NewHandler(
 			},
 		},
 		Workers: workers,
+		WorkerMiddleware: []rivertype.WorkerMiddleware{
+			&loggingMiddleware{},
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create river client: %w", err)
@@ -55,4 +60,31 @@ func NewHandler(
 		config: cfg,
 		ctx:    ctx,
 	}, nil
+}
+
+type loggingMiddleware struct {
+	river.WorkerMiddlewareDefaults
+}
+
+func (m *loggingMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(ctx context.Context) error) error {
+	startTime := time.Now()
+	slog.InfoContext(ctx, "working on job", "job_id", job.ID, "kind", job.Kind)
+
+	defer func() {
+		if r := recover(); r != nil {
+			duration := time.Since(startTime)
+			slog.ErrorContext(ctx, "panic working on job", "job_id", job.ID, "kind", job.Kind, "error", r, "duration", duration)
+			panic(r)
+		}
+	}()
+
+	err := doInner(ctx)
+	duration := time.Since(startTime)
+	if err != nil {
+		slog.ErrorContext(ctx, "error working on job", "job_id", job.ID, "kind", job.Kind, "error", err, "duration", duration)
+	} else {
+		slog.InfoContext(ctx, "successfully worked on job", "job_id", job.ID, "kind", job.Kind, "duration", duration)
+	}
+
+	return err
 }
