@@ -61,13 +61,15 @@ spec:
               value: {{ .Values.storage.s3.bucket | quote }}
             {{- end }}
           livenessProbe:
-            httpGet:
-              path: /version
+            grpc:
               port: {{ .Values.cache.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /version
+            grpc:
               port: {{ .Values.cache.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.cache.resources | nindent 12 }}
           # Mount source code for development

@@ -55,13 +55,15 @@ spec:
               value: "{{ .Values.storage.s3.bucket }}"
             {{- end }}
           livenessProbe:
-            httpGet:
-              path: /version
+            grpc:
               port: {{ .Values.orchestrator.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /version
+            grpc:
               port: {{ .Values.orchestrator.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.orchestrator.resources | nindent 12 }}
           {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}

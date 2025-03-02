@@ -66,13 +66,15 @@ spec:
               containerPort: {{ .Values.worker.port }}
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: /healthz
+            grpc:
               port: {{ .Values.worker.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /version
+            grpc:
               port: {{ .Values.worker.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           {{- if .Values.development.enabled }}
