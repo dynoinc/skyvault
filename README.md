@@ -4,12 +4,20 @@
 
 SkyVault is a high-performance, scalable object-store backed key-value store designed for efficient data management and retrieval.
 
+
+
 ### Key Components
 
 - **Batcher**: Efficiently batch operations to write to Objectstore
 - **Cache**: Fast in-memory access on the serving path
 - **Index**: Handles read requests and serves them uses cache
 - **Worker/Orchestrator**: Background jobs to compact/purge data in Objecstore
+
+## Architecture
+
+SkyVault's architecture is designed for high scalability and performance:
+
+![SkyVault Architecture](docs/arch.png)
 
 ## Technologies Used
 

@@ -25,8 +25,11 @@ import (
 
 // Config holds the configuration for the index service
 type Config struct {
-	Enabled     bool          `default:"false"`
+	Enabled bool `default:"false"`
+
 	Namespace   string        `default:"default"`
+	Instance    string        `default:"default"`
+	CachePort   int           `default:"5002"`
 	RefreshRate time.Duration `default:"30s"`
 }
 
@@ -140,7 +143,7 @@ func NewHandler(
 func (h *handler) watchCacheServices(ctx context.Context) {
 	wait.UntilWithContext(ctx, func(ctx context.Context) {
 		pods, err := h.kubeClient.CoreV1().Pods(h.config.Namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: "app.kubernetes.io/component=cache",
+			LabelSelector: fmt.Sprintf("app.kubernetes.io/component=cache,skyvault.io/instance=%s", h.config.Instance),
 		})
 		if err != nil {
 			slog.Error("Failed to list cache service pods", "error", err)
@@ -151,8 +154,8 @@ func (h *handler) watchCacheServices(ctx context.Context) {
 		endpoints := make(map[string]bool)
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == "Running" {
-				// Use pod IP address and cache service port
-				endpoint := fmt.Sprintf("%s:%d", pod.Status.PodIP, 5002) // Assuming port 5002
+				// Use pod IP address and configured cache service port
+				endpoint := fmt.Sprintf("%s:%d", pod.Status.PodIP, h.config.CachePort)
 				endpoints[endpoint] = true
 			}
 		}
@@ -166,7 +169,7 @@ func (h *handler) watchCacheServices(ctx context.Context) {
 			if !endpoints[endpoint] {
 				h.ring.Remove(Member(endpoint))
 				delete(h.cacheClients, endpoint)
-				slog.Info("Removed cache service from ring", "endpoint", endpoint)
+				slog.Info("Removed cache service from ring", "endpoint", endpoint, "instance", h.config.Instance)
 			}
 		}
 
@@ -174,7 +177,7 @@ func (h *handler) watchCacheServices(ctx context.Context) {
 		for endpoint := range endpoints {
 			if _, exists := h.cacheClients[endpoint]; !exists {
 				h.addCacheServiceLocked(endpoint)
-				slog.Info("Added cache service to ring", "endpoint", endpoint)
+				slog.Info("Added cache service to ring", "endpoint", endpoint, "instance", h.config.Instance)
 			}
 		}
 	}, h.config.RefreshRate)

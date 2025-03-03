@@ -88,10 +88,10 @@ batcher:
 # Cache service configuration
 cache:
   enabled: true
-  replicas: 2
-  port: 5002
   maxSizeBytes: 67108864  # 64MB cache size
-  # Use smaller resource requests for Minikube
+  port: 5002
+  instance: "default"
+  replicas: 2
   resources:
     requests:
       memory: "128Mi"
@@ -103,9 +103,11 @@ cache:
 # Index service configuration
 index:
   enabled: true
-  replicas: 2
   port: 5003
-  # Use smaller resource requests for Minikube
+  instance: "default"
+  namespace: "default"
+  refreshRate: "30s"
+  replicas: 2
   resources:
     requests:
       memory: "128Mi"

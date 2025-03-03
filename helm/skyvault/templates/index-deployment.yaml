@@ -2,21 +2,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "skyvault.fullname" . }}-index
+  name: {{ include "skyvault.fullname" . }}-index-{{ .Values.index.instance }}
   labels:
     {{- include "skyvault.labels" . | nindent 4 }}
     app.kubernetes.io/component: index
+    skyvault.io/instance: {{ .Values.index.instance }}
 spec:
   replicas: {{ .Values.index.replicas }}
   selector:
     matchLabels:
       {{- include "skyvault.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: index
+      skyvault.io/instance: {{ .Values.index.instance }}
   template:
     metadata:
       labels:
         {{- include "skyvault.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: index
+        skyvault.io/instance: {{ .Values.index.instance }}
     spec:
       serviceAccountName: {{ include "skyvault.fullname" . }}
       securityContext:
@@ -40,14 +43,16 @@ spec:
               value: "{{ .Values.storage.url }}"
             - name: SKYVAULT_INDEX_ENABLED
               value: "true"
-            - name: SKYVAULT_INDEX_CACHE_SERVICE
-              value: "{{ include "skyvault.fullname" . }}-cache:{{ .Values.cache.port }}"
+            - name: SKYVAULT_INDEX_CACHE_PORT
+              value: "{{ .Values.cache.port }}"
+            - name: SKYVAULT_INDEX_INSTANCE
+              value: {{ .Values.index.instance | quote }}
             - name: SKYVAULT_INDEX_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: SKYVAULT_INDEX_REFRESH_RATE
-              value: "30s"
+              value: {{ .Values.index.refreshRate | quote }}
             {{- if eq .Values.storage.type "s3" }}
             - name: AWS_ACCESS_KEY_ID
               value: "{{ .Values.storage.s3.access_key }}"

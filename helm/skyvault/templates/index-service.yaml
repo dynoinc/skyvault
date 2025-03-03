@@ -2,10 +2,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "skyvault.fullname" . }}-index
+  name: {{ include "skyvault.fullname" . }}-index-{{ .Values.index.instance }}
   labels:
     {{- include "skyvault.labels" . | nindent 4 }}
     app.kubernetes.io/component: index
+    skyvault.io/instance: {{ .Values.index.instance }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -15,4 +16,5 @@ spec:
   selector:
     {{- include "skyvault.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: index
+    skyvault.io/instance: {{ .Values.index.instance }}
 {{- end }} 

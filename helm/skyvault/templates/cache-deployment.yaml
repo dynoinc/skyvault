@@ -2,21 +2,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "skyvault.fullname" . }}-cache
+  name: {{ include "skyvault.fullname" . }}-cache-{{ .Values.cache.instance }}
   labels:
     {{- include "skyvault.labels" . | nindent 4 }}
     app.kubernetes.io/component: cache
+    skyvault.io/instance: {{ .Values.cache.instance }}
 spec:
   replicas: {{ .Values.cache.replicas }}
   selector:
     matchLabels:
       {{- include "skyvault.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: cache
+      skyvault.io/instance: {{ .Values.cache.instance }}
   template:
     metadata:
       labels:
         {{- include "skyvault.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: cache
+        skyvault.io/instance: {{ .Values.cache.instance }}
     spec:
       serviceAccountName: {{ include "skyvault.fullname" . }}
       {{- with .Values.imagePullSecrets }}
@@ -72,7 +75,6 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.cache.resources | nindent 12 }}
-          # Mount source code for development
           {{- if .Values.development.sourceCodeMount.enabled }}
           volumeMounts:
             - name: source-code

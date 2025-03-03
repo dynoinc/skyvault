@@ -36,15 +36,15 @@ k8s-dev:
     
     # Restart the deployments to pick up changes
     kubectl rollout restart deployment/skyvault-batcher
-    kubectl rollout restart deployment/skyvault-cache
-    kubectl rollout restart deployment/skyvault-index
+    kubectl rollout restart deployment/skyvault-cache-default
+    kubectl rollout restart deployment/skyvault-index-default
     kubectl rollout restart deployment/skyvault-worker
     kubectl rollout restart deployment/skyvault-orchestrator
     
     # Wait for deployments to finish rolling out
     kubectl rollout status -w deployment/skyvault-batcher
-    kubectl rollout status -w deployment/skyvault-cache
-    kubectl rollout status -w deployment/skyvault-index
+    kubectl rollout status -w deployment/skyvault-cache-default
+    kubectl rollout status -w deployment/skyvault-index-default
     kubectl rollout status -w deployment/skyvault-worker
     kubectl rollout status -w deployment/skyvault-orchestrator
     
@@ -75,7 +75,7 @@ k8s-stress:
     NAMESPACE=${NAMESPACE:-default}
     SERVICE=${SERVICE:-both}
     BATCHER_NAME=${BATCHER_NAME:-skyvault-batcher}
-    INDEX_NAME=${INDEX_NAME:-skyvault-index}
+    INDEX_NAME=${INDEX_NAME:-skyvault-index-default}
     READ_MODE=${READ_MODE:-mixed}
     DEBUG=${DEBUG:-false}
     
