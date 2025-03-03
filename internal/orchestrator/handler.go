@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -10,6 +11,7 @@ import (
 	v1connect "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/background"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -18,9 +20,10 @@ import (
 
 // Config holds the configuration for the orchestrator service
 type Config struct {
-	Enabled        bool  `default:"false"`
-	MaxL0Batches   int   `default:"4"`
-	MaxL0BatchSize int64 `default:"67108864"` // 64MB
+	Enabled              bool `default:"false"`
+	MaxL0Batches         int  `default:"4"`
+	MinL0MergedBatchSize int  `default:"16777216"` // 16MB
+	MaxL0MergedBatchSize int  `default:"67108864"` // 64MB
 }
 
 // handler implements the OrchestratorService
@@ -62,36 +65,47 @@ func NewHandler(
 	return h, nil
 }
 
-func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
-	if len(l0Batches) <= h.config.MaxL0Batches {
-		return nil
+func mergeableBatches(l0Batches []database.L0Batch, maxL0Batches int, minL0MergedBatchSize int, maxL0MergedBatchSize int) ([]database.L0Batch, int64) {
+	if len(l0Batches) <= maxL0Batches {
+		return nil, 0
 	}
 
-	var batchesToMerge []int64
-	var totalSize int64
-
-	// Sort batches by ID (descending)
+	// Sort batches by SeqNo (ascending)
 	sort.Slice(l0Batches, func(i, j int) bool {
-		return l0Batches[i].ID > l0Batches[j].ID
+		return l0Batches[i].SeqNo < l0Batches[j].SeqNo
 	})
 
-	// Select the latest set of ACTIVE batches that make up max batch size
-	for _, batch := range l0Batches {
-		// Stop as soon as we find a non-active batch
-		if batch.Status != "ACTIVE" {
-			break
-		}
-
-		batchesToMerge = append(batchesToMerge, batch.ID)
-		totalSize += batch.SizeBytes
-
-		// Once we have enough batches to merge, stop
-		if totalSize >= h.config.MaxL0BatchSize {
-			break
-		}
+	for len(l0Batches) > 0 && l0Batches[0].Attrs.State != dto.StateCommitted {
+		l0Batches = l0Batches[1:]
 	}
 
-	if len(batchesToMerge) <= 1 {
+	if len(l0Batches) == 0 {
+		return nil, 0
+	}
+
+	var batchesToMerge []database.L0Batch
+	var totalSize int64
+	for len(l0Batches) > 0 && totalSize < int64(maxL0MergedBatchSize) {
+		batchesToMerge = append(batchesToMerge, l0Batches[0])
+		totalSize += l0Batches[0].Attrs.SizeBytes
+		l0Batches = l0Batches[1:]
+	}
+
+	if len(batchesToMerge) <= 1 || totalSize < int64(minL0MergedBatchSize) {
+		return nil, 0
+	}
+
+	return batchesToMerge, totalSize
+}
+
+func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
+	batchesToMerge, totalSize := mergeableBatches(
+		l0Batches,
+		h.config.MaxL0Batches,
+		h.config.MinL0MergedBatchSize,
+		h.config.MaxL0MergedBatchSize,
+	)
+	if batchesToMerge == nil {
 		return nil
 	}
 
@@ -104,21 +118,24 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	qtx := database.New(tx)
 
 	// Lock all these batches and insert job in 1 txn.
-	locked, err := qtx.UpdateL0BatchesStatus(h.ctx, database.UpdateL0BatchesStatusParams{
-		BatchIds:      batchesToMerge,
-		CurrentStatus: "ACTIVE",
-		NewStatus:     "LOCKED",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to lock L0 batches: %w", err)
-	}
+	for _, batch := range batchesToMerge {
+		_, err := qtx.UpdateL0Batch(h.ctx, database.UpdateL0BatchParams{
+			SeqNo:   batch.SeqNo,
+			Version: batch.Version,
+			Attrs:   dto.L0BatchAttrs{State: dto.StateMerging},
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				slog.WarnContext(h.ctx, "concurrent update, skipping", "seqNo", batch.SeqNo, "version", batch.Version)
+				return nil
+			}
 
-	if locked != int64(len(batchesToMerge)) {
-		return fmt.Errorf("failed to lock all L0 batches: %d", locked)
+			return fmt.Errorf("failed to update L0 batches: %w", err)
+		}
 	}
 
 	_, err = h.riverClient.InsertTx(h.ctx, tx, background.MergeL0BatchesArgs{
-		BatchIDs: batchesToMerge,
+		Batches: batchesToMerge,
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to schedule merge job: %w", err)

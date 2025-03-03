@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/dynoinc/skyvault/internal/storage"
 	"github.com/stretchr/testify/require"
@@ -58,11 +59,16 @@ func TestSingleWrite(t *testing.T) {
 	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{}, nil)
 
 	// Expect AddL0Batch to be called once
-	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil)
+	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(nil)
 
 	// Setup expectations for the second GetAllL0Batches call
 	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{
-		{ID: 1, Path: "some/path"},
+		{
+			SeqNo: 1,
+			Attrs: dto.L0BatchAttrs{
+				Path: "some/path",
+			},
+		},
 	}, nil)
 
 	batches, err := db.GetL0Batches(ctx)
@@ -97,12 +103,22 @@ func TestBatchBySize(t *testing.T) {
 
 	// Setup expectations - use AnyTimes but don't match the finalCallCtx
 	db.EXPECT().GetL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
-	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil).AnyTimes()
+	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// For the final check, match only the finalCallCtx
 	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
-		{ID: 1, Path: "some/path"},
-		{ID: 2, Path: "another/path"},
+		{
+			SeqNo: 1,
+			Attrs: dto.L0BatchAttrs{
+				Path: "some/path",
+			},
+		},
+		{
+			SeqNo: 2,
+			Attrs: dto.L0BatchAttrs{
+				Path: "another/path",
+			},
+		},
 	}, nil)
 
 	// First request with a record of size 15 bytes
@@ -151,11 +167,16 @@ func TestGracefulShutdown(t *testing.T) {
 
 	// Setup expectations
 	db.EXPECT().GetL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
-	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(int64(1), nil).AnyTimes()
+	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// For the final check
 	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
-		{ID: 1, Path: "some/path"},
+		{
+			SeqNo: 1,
+			Attrs: dto.L0BatchAttrs{
+				Path: "some/path",
+			},
+		},
 	}, nil)
 
 	errCh := make(chan error)

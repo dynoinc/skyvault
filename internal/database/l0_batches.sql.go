@@ -7,49 +7,39 @@ package database
 
 import (
 	"context"
+
+	dto "github.com/dynoinc/skyvault/internal/database/dto"
 )
 
-const addL0Batch = `-- name: AddL0Batch :one
-INSERT INTO l0_batches (path, size_bytes, min_key, max_key) VALUES ($1, $2, $3, $4) RETURNING id
+const addL0Batch = `-- name: AddL0Batch :exec
+INSERT INTO l0_batches (attrs) VALUES ($1)
 `
 
-type AddL0BatchParams struct {
-	Path      string
-	SizeBytes int64
-	MinKey    string
-	MaxKey    string
-}
-
-func (q *Queries) AddL0Batch(ctx context.Context, arg AddL0BatchParams) (int64, error) {
-	row := q.db.QueryRow(ctx, addL0Batch,
-		arg.Path,
-		arg.SizeBytes,
-		arg.MinKey,
-		arg.MaxKey,
-	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
-}
-
-const deleteL0Batches = `-- name: DeleteL0Batches :exec
-DELETE FROM l0_batches
-WHERE id = ANY($1::bigint[])
-  AND status = $2::text
-`
-
-type DeleteL0BatchesParams struct {
-	BatchIds      []int64
-	CurrentStatus string
-}
-
-func (q *Queries) DeleteL0Batches(ctx context.Context, arg DeleteL0BatchesParams) error {
-	_, err := q.db.Exec(ctx, deleteL0Batches, arg.BatchIds, arg.CurrentStatus)
+func (q *Queries) AddL0Batch(ctx context.Context, attrs dto.L0BatchAttrs) error {
+	_, err := q.db.Exec(ctx, addL0Batch, attrs)
 	return err
 }
 
+const deleteL0Batch = `-- name: DeleteL0Batch :one
+DELETE FROM l0_batches
+WHERE seq_no = $1 AND version = $2
+RETURNING seq_no, version, attrs
+`
+
+type DeleteL0BatchParams struct {
+	SeqNo   int64
+	Version int32
+}
+
+func (q *Queries) DeleteL0Batch(ctx context.Context, arg DeleteL0BatchParams) (L0Batch, error) {
+	row := q.db.QueryRow(ctx, deleteL0Batch, arg.SeqNo, arg.Version)
+	var i L0Batch
+	err := row.Scan(&i.SeqNo, &i.Version, &i.Attrs)
+	return i, err
+}
+
 const getL0Batches = `-- name: GetL0Batches :many
-SELECT id, path, size_bytes, min_key, max_key, status, created_at FROM l0_batches
+SELECT seq_no, version, attrs FROM l0_batches
 `
 
 func (q *Queries) GetL0Batches(ctx context.Context) ([]L0Batch, error) {
@@ -61,15 +51,7 @@ func (q *Queries) GetL0Batches(ctx context.Context) ([]L0Batch, error) {
 	var items []L0Batch
 	for rows.Next() {
 		var i L0Batch
-		if err := rows.Scan(
-			&i.ID,
-			&i.Path,
-			&i.SizeBytes,
-			&i.MinKey,
-			&i.MaxKey,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
+		if err := rows.Scan(&i.SeqNo, &i.Version, &i.Attrs); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -80,13 +62,13 @@ func (q *Queries) GetL0Batches(ctx context.Context) ([]L0Batch, error) {
 	return items, nil
 }
 
-const getL0BatchesByID = `-- name: GetL0BatchesByID :many
-SELECT id, path, size_bytes, min_key, max_key, status, created_at FROM l0_batches
-WHERE id = ANY($1::bigint[])
+const getL0BatchesBySeqNo = `-- name: GetL0BatchesBySeqNo :many
+SELECT seq_no, version, attrs FROM l0_batches
+WHERE seq_no = ANY($1::bigint[])
 `
 
-func (q *Queries) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]L0Batch, error) {
-	rows, err := q.db.Query(ctx, getL0BatchesByID, batchIds)
+func (q *Queries) GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]L0Batch, error) {
+	rows, err := q.db.Query(ctx, getL0BatchesBySeqNo, batchSeqNos)
 	if err != nil {
 		return nil, err
 	}
@@ -94,15 +76,7 @@ func (q *Queries) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]L0B
 	var items []L0Batch
 	for rows.Next() {
 		var i L0Batch
-		if err := rows.Scan(
-			&i.ID,
-			&i.Path,
-			&i.SizeBytes,
-			&i.MinKey,
-			&i.MaxKey,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
+		if err := rows.Scan(&i.SeqNo, &i.Version, &i.Attrs); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -113,26 +87,22 @@ func (q *Queries) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]L0B
 	return items, nil
 }
 
-const updateL0BatchesStatus = `-- name: UpdateL0BatchesStatus :one
-WITH updated AS (
-  UPDATE l0_batches
-  SET status = $1::text
-  WHERE id = ANY($2::bigint[])
-    AND status = $3::text
-  RETURNING id
-)
-SELECT count(*) FROM updated
+const updateL0Batch = `-- name: UpdateL0Batch :one
+UPDATE l0_batches
+SET attrs = attrs || $1
+WHERE seq_no = $2 AND version = $3
+RETURNING seq_no, version, attrs
 `
 
-type UpdateL0BatchesStatusParams struct {
-	NewStatus     string
-	BatchIds      []int64
-	CurrentStatus string
+type UpdateL0BatchParams struct {
+	Attrs   dto.L0BatchAttrs
+	SeqNo   int64
+	Version int32
 }
 
-func (q *Queries) UpdateL0BatchesStatus(ctx context.Context, arg UpdateL0BatchesStatusParams) (int64, error) {
-	row := q.db.QueryRow(ctx, updateL0BatchesStatus, arg.NewStatus, arg.BatchIds, arg.CurrentStatus)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+func (q *Queries) UpdateL0Batch(ctx context.Context, arg UpdateL0BatchParams) (L0Batch, error) {
+	row := q.db.QueryRow(ctx, updateL0Batch, arg.Attrs, arg.SeqNo, arg.Version)
+	var i L0Batch
+	err := row.Scan(&i.SeqNo, &i.Version, &i.Attrs)
+	return i, err
 }

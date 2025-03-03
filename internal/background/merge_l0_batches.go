@@ -3,15 +3,19 @@ package background
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"path"
 	"slices"
 	"sort"
 
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/recordio"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/riverqueue/river"
@@ -20,7 +24,7 @@ import (
 )
 
 type MergeL0BatchesArgs struct {
-	BatchIDs []int64
+	Batches []database.L0Batch
 }
 
 func (m MergeL0BatchesArgs) Kind() string {
@@ -42,24 +46,15 @@ func NewMergeL0BatchesWorker(db *pgxpool.Pool, objstore objstore.Bucket) *MergeL
 }
 
 func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0BatchesArgs]) error {
-	l0Batches, err := database.New(w.db).GetL0BatchesByID(ctx, job.Args.BatchIDs)
-	if err != nil {
-		return fmt.Errorf("getting L0 batches: %w", err)
-	}
-
-	if len(l0Batches) != len(job.Args.BatchIDs) {
-		return fmt.Errorf("some L0 batches were not found: %d", len(job.Args.BatchIDs)-len(l0Batches))
-	}
-
-	// sort the L0 batches by ID (descending)
-	sort.Slice(l0Batches, func(i, j int) bool {
-		return l0Batches[i].ID > l0Batches[j].ID
+	// sort the L0 batches by SeqNo (descending), because newer values take precedence
+	sort.Slice(job.Args.Batches, func(i, j int) bool {
+		return job.Args.Batches[i].SeqNo > job.Args.Batches[j].SeqNo
 	})
 
 	// read all the objects from the L0 batches
-	objs := make([][]byte, len(l0Batches))
-	for i, l0Batch := range l0Batches {
-		obj, err := w.objstore.Get(ctx, l0Batch.Path)
+	objs := make([][]byte, len(job.Args.Batches))
+	for i, batch := range job.Args.Batches {
+		obj, err := w.objstore.Get(ctx, batch.Attrs.Path)
 		if err != nil {
 			return fmt.Errorf("getting object: %w", err)
 		}
@@ -114,20 +109,40 @@ func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0B
 	defer tx.Rollback(ctx)
 
 	qtx := database.New(tx)
-	if _, err := qtx.AddL0Batch(ctx, database.AddL0BatchParams{
-		Path:      objPath,
-		SizeBytes: sizeBytes,
-		MinKey:    minKey,
-		MaxKey:    maxKey,
+
+	// update the smallest seqno batch with the updated info
+	batchToUpdate := job.Args.Batches[len(job.Args.Batches)-1]
+	if _, err := qtx.UpdateL0Batch(ctx, database.UpdateL0BatchParams{
+		SeqNo:   batchToUpdate.SeqNo,
+		Version: batchToUpdate.Version,
+		Attrs: dto.L0BatchAttrs{
+			State:     dto.StateMerged,
+			Path:      objPath,
+			SizeBytes: sizeBytes,
+			MinKey:    minKey,
+			MaxKey:    maxKey,
+		},
 	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.WarnContext(ctx, "concurrent update, no-oping merge", "seqNo", batchToUpdate.SeqNo, "version", batchToUpdate.Version)
+			return nil
+		}
+
 		return fmt.Errorf("adding batch record: %w", err)
 	}
 
-	if err := qtx.DeleteL0Batches(ctx, database.DeleteL0BatchesParams{
-		BatchIds:      job.Args.BatchIDs,
-		CurrentStatus: "LOCKED",
-	}); err != nil {
-		return fmt.Errorf("deleting L0 batches: %w", err)
+	for _, batch := range job.Args.Batches[:len(job.Args.Batches)-1] {
+		if _, err := qtx.DeleteL0Batch(ctx, database.DeleteL0BatchParams{
+			SeqNo:   batch.SeqNo,
+			Version: batch.Version,
+		}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				slog.WarnContext(ctx, "concurrent update, no-oping merge", "seqNo", batch.SeqNo, "version", batch.Version)
+				return nil
+			}
+
+			return fmt.Errorf("deleting batch record: %w", err)
+		}
 	}
 
 	if _, err = river.JobCompleteTx[*riverpgxv5.Driver](ctx, tx, job); err != nil {

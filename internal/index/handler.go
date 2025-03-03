@@ -212,9 +212,9 @@ func (h *handler) BatchGet(
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("error retrieving l0 batches: %w", err))
 	}
 
-	// Sort batches by ID, highest first (newest first)
+	// Sort batches by SeqNo, highest first (newest first)
 	sort.Slice(l0Batches, func(i, j int) bool {
-		return l0Batches[i].ID > l0Batches[j].ID
+		return l0Batches[i].SeqNo > l0Batches[j].SeqNo
 	})
 
 	// Track which keys we've found
@@ -248,14 +248,14 @@ func (h *handler) BatchGet(
 			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("no cache services available"))
 		}
 
-		primary, fallback := h.ring.LocateKey([]byte(batch.Path))
+		primary, fallback := h.ring.LocateKey([]byte(batch.Attrs.Path))
 		primaryEndpoint := primary.String()
 		fallbackEndpoint := fallback.String()
 		h.ringMu.RUnlock()
 
 		// Try primary and fallback endpoints in order
 		cacheReq := connect.NewRequest(&cachev1.GetRequest{})
-		cacheReq.Msg.SetObjectPath(batch.Path)
+		cacheReq.Msg.SetObjectPath(batch.Attrs.Path)
 		cacheReq.Msg.SetKeys(keysToFind)
 
 		endpoints := []string{primaryEndpoint, fallbackEndpoint}
@@ -282,7 +282,7 @@ func (h *handler) BatchGet(
 
 		if lastErr != nil {
 			// Return an error since we're unable to process this batch
-			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for batch %d: %w", batch.ID, lastErr))
+			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for path %s: %w", batch.Attrs.Path, lastErr))
 		}
 
 		// Process the results

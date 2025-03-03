@@ -3,6 +3,8 @@ package database
 import (
 	"testing"
 
+	dto "github.com/dynoinc/skyvault/internal/database/dto"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -42,7 +44,7 @@ func TestPool(t *testing.T) {
 
 	// Test UpdateL0BatchesStatus
 	// 1. Add some test batches
-	batch1ID, err := q.AddL0Batch(ctx, AddL0BatchParams{
+	err = q.AddL0Batch(ctx, dto.L0BatchAttrs{
 		Path:      "/test/path1",
 		SizeBytes: 100,
 		MinKey:    "key1",
@@ -50,7 +52,7 @@ func TestPool(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	batch2ID, err := q.AddL0Batch(ctx, AddL0BatchParams{
+	err = q.AddL0Batch(ctx, dto.L0BatchAttrs{
 		Path:      "/test/path2",
 		SizeBytes: 200,
 		MinKey:    "key101",
@@ -59,30 +61,23 @@ func TestPool(t *testing.T) {
 	require.NoError(t, err)
 
 	// 2. Verify the batches are added with ACTIVE status by default
-	batches, err := q.GetL0BatchesByID(ctx, []int64{batch1ID, batch2ID})
+	batches, err := q.GetL0BatchesBySeqNo(ctx, []int64{1, 2})
 	require.NoError(t, err)
 	require.Len(t, batches, 2)
-	assert.Equal(t, "ACTIVE", batches[0].Status)
-	assert.Equal(t, "ACTIVE", batches[1].Status)
 
-	// 3. Update the status using UpdateL0BatchesStatus
-	updated, err := q.UpdateL0BatchesStatus(ctx, UpdateL0BatchesStatusParams{
-		NewStatus:     "COMPACTED",
-		BatchIds:      []int64{batch1ID, batch2ID},
-		CurrentStatus: "ACTIVE",
+	// 3. Update the status using UpdateL0Batch
+	updated, err := q.UpdateL0Batch(ctx, UpdateL0BatchParams{
+		SeqNo:   1,
+		Version: 1,
+		Attrs:   dto.L0BatchAttrs{State: dto.StateMerging},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), updated, "Both batches should be updated")
+	assert.Equal(t, int64(1), updated.SeqNo)
+	assert.Equal(t, int32(2), updated.Version)
+	assert.Equal(t, dto.StateMerging, updated.Attrs.State)
 
-	// 4. Verify the status was updated
-	batches, err = q.GetL0BatchesByID(ctx, []int64{batch1ID, batch2ID})
-	require.NoError(t, err)
-	require.Len(t, batches, 2)
-	assert.Equal(t, "COMPACTED", batches[0].Status)
-	assert.Equal(t, "COMPACTED", batches[1].Status)
-
-	// 5. Test that UpdateL0BatchesStatus only updates rows with the matching current status
-	_, err = q.AddL0Batch(ctx, AddL0BatchParams{
+	// 4. Test that UpdateL0BatchesStatus only updates rows with the matching version
+	err = q.AddL0Batch(ctx, dto.L0BatchAttrs{
 		Path:      "/test/path3",
 		SizeBytes: 300,
 		MinKey:    "key201",
@@ -90,12 +85,20 @@ func TestPool(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Try to update all batches but only those with COMPACTED status should be affected
-	updated, err = q.UpdateL0BatchesStatus(ctx, UpdateL0BatchesStatusParams{
-		NewStatus:     "DELETED",
-		BatchIds:      []int64{batch1ID, batch2ID},
-		CurrentStatus: "COMPACTED",
+	// Try to update all batch with version 5
+	updated, err = q.UpdateL0Batch(ctx, UpdateL0BatchParams{
+		SeqNo:   1,
+		Version: 5,
+		Attrs:   dto.L0BatchAttrs{State: dto.StateMerging},
 	})
-	require.NoError(t, err)
-	assert.Equal(t, int64(2), updated, "Only the compacted batches should be updated")
+	require.Error(t, err)
+	require.Equal(t, pgx.ErrNoRows, err)
+
+	// Try to delete a batch with version 5
+	_, err = q.DeleteL0Batch(ctx, DeleteL0BatchParams{
+		SeqNo:   1,
+		Version: 5,
+	})
+	require.Error(t, err)
+	require.Equal(t, pgx.ErrNoRows, err)
 }

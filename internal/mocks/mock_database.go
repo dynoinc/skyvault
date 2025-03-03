@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	database "github.com/dynoinc/skyvault/internal/database"
+	dto "github.com/dynoinc/skyvault/internal/database/dto"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,32 +43,32 @@ func (m *MockQuerier) EXPECT() *MockQuerierMockRecorder {
 }
 
 // AddL0Batch mocks base method.
-func (m *MockQuerier) AddL0Batch(ctx context.Context, arg database.AddL0BatchParams) (int64, error) {
+func (m *MockQuerier) AddL0Batch(ctx context.Context, attrs dto.L0BatchAttrs) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddL0Batch", ctx, arg)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// AddL0Batch indicates an expected call of AddL0Batch.
-func (mr *MockQuerierMockRecorder) AddL0Batch(ctx, arg any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddL0Batch", reflect.TypeOf((*MockQuerier)(nil).AddL0Batch), ctx, arg)
-}
-
-// DeleteL0Batches mocks base method.
-func (m *MockQuerier) DeleteL0Batches(ctx context.Context, arg database.DeleteL0BatchesParams) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteL0Batches", ctx, arg)
+	ret := m.ctrl.Call(m, "AddL0Batch", ctx, attrs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteL0Batches indicates an expected call of DeleteL0Batches.
-func (mr *MockQuerierMockRecorder) DeleteL0Batches(ctx, arg any) *gomock.Call {
+// AddL0Batch indicates an expected call of AddL0Batch.
+func (mr *MockQuerierMockRecorder) AddL0Batch(ctx, attrs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteL0Batches", reflect.TypeOf((*MockQuerier)(nil).DeleteL0Batches), ctx, arg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddL0Batch", reflect.TypeOf((*MockQuerier)(nil).AddL0Batch), ctx, attrs)
+}
+
+// DeleteL0Batch mocks base method.
+func (m *MockQuerier) DeleteL0Batch(ctx context.Context, arg database.DeleteL0BatchParams) (database.L0Batch, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteL0Batch", ctx, arg)
+	ret0, _ := ret[0].(database.L0Batch)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteL0Batch indicates an expected call of DeleteL0Batch.
+func (mr *MockQuerierMockRecorder) DeleteL0Batch(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteL0Batch", reflect.TypeOf((*MockQuerier)(nil).DeleteL0Batch), ctx, arg)
 }
 
 // GetL0Batches mocks base method.
@@ -85,32 +86,32 @@ func (mr *MockQuerierMockRecorder) GetL0Batches(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0Batches", reflect.TypeOf((*MockQuerier)(nil).GetL0Batches), ctx)
 }
 
-// GetL0BatchesByID mocks base method.
-func (m *MockQuerier) GetL0BatchesByID(ctx context.Context, batchIds []int64) ([]database.L0Batch, error) {
+// GetL0BatchesBySeqNo mocks base method.
+func (m *MockQuerier) GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]database.L0Batch, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetL0BatchesByID", ctx, batchIds)
+	ret := m.ctrl.Call(m, "GetL0BatchesBySeqNo", ctx, batchSeqNos)
 	ret0, _ := ret[0].([]database.L0Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetL0BatchesByID indicates an expected call of GetL0BatchesByID.
-func (mr *MockQuerierMockRecorder) GetL0BatchesByID(ctx, batchIds any) *gomock.Call {
+// GetL0BatchesBySeqNo indicates an expected call of GetL0BatchesBySeqNo.
+func (mr *MockQuerierMockRecorder) GetL0BatchesBySeqNo(ctx, batchSeqNos any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0BatchesByID", reflect.TypeOf((*MockQuerier)(nil).GetL0BatchesByID), ctx, batchIds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0BatchesBySeqNo", reflect.TypeOf((*MockQuerier)(nil).GetL0BatchesBySeqNo), ctx, batchSeqNos)
 }
 
-// UpdateL0BatchesStatus mocks base method.
-func (m *MockQuerier) UpdateL0BatchesStatus(ctx context.Context, arg database.UpdateL0BatchesStatusParams) (int64, error) {
+// UpdateL0Batch mocks base method.
+func (m *MockQuerier) UpdateL0Batch(ctx context.Context, arg database.UpdateL0BatchParams) (database.L0Batch, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateL0BatchesStatus", ctx, arg)
-	ret0, _ := ret[0].(int64)
+	ret := m.ctrl.Call(m, "UpdateL0Batch", ctx, arg)
+	ret0, _ := ret[0].(database.L0Batch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// UpdateL0BatchesStatus indicates an expected call of UpdateL0BatchesStatus.
-func (mr *MockQuerierMockRecorder) UpdateL0BatchesStatus(ctx, arg any) *gomock.Call {
+// UpdateL0Batch indicates an expected call of UpdateL0Batch.
+func (mr *MockQuerierMockRecorder) UpdateL0Batch(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateL0BatchesStatus", reflect.TypeOf((*MockQuerier)(nil).UpdateL0BatchesStatus), ctx, arg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateL0Batch", reflect.TypeOf((*MockQuerier)(nil).UpdateL0Batch), ctx, arg)
 }

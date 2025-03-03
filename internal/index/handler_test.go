@@ -10,8 +10,8 @@ import (
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/mocks"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -63,8 +63,9 @@ func TestHandler_Get(t *testing.T) {
 		GetL0Batches(gomock.Any()).
 		Return([]database.L0Batch{
 			{
-				ID:   1,
-				Path: "batch-1",
+				Attrs: dto.L0BatchAttrs{
+					Path: "batch-1",
+				},
 			},
 		}, nil)
 
@@ -115,14 +116,16 @@ func TestValuePrecedence(t *testing.T) {
 	// Setup test data: 2 l0 batches with timestamps in descending order
 	now := time.Now()
 	batch1 := database.L0Batch{
-		ID:        1,
-		Path:      "batch1",
-		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		Attrs: dto.L0BatchAttrs{
+			Path:      "batch1",
+			CreatedAt: now,
+		},
 	}
 	batch2 := database.L0Batch{
-		ID:        2,
-		Path:      "batch2",
-		CreatedAt: pgtype.Timestamptz{Time: now.Add(-1 * time.Hour), Valid: true},
+		Attrs: dto.L0BatchAttrs{
+			Path:      "batch2",
+			CreatedAt: now.Add(-1 * time.Hour),
+		},
 	}
 
 	// Setup database mock to return our batches
@@ -268,9 +271,10 @@ func TestCacheServiceError(t *testing.T) {
 	// Setup test data
 	now := time.Now()
 	batch1 := database.L0Batch{
-		ID:        1,
-		Path:      "batch1",
-		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		Attrs: dto.L0BatchAttrs{
+			Path:      "batch1",
+			CreatedAt: now,
+		},
 	}
 
 	// Setup database mock
@@ -312,7 +316,7 @@ func TestCacheServiceError(t *testing.T) {
 	_, err := h.BatchGet(ctx, req)
 	// Should return an error since we can't process the batch
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cache services unavailable for batch 1")
+	assert.Contains(t, err.Error(), "cache services unavailable for")
 }
 
 // TestValueAndTombstonePrecedence tests that values and tombstones from newer batches
@@ -332,16 +336,19 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	// Batch 3 is newest, Batch 1 is oldest
 	batches := []database.L0Batch{
 		{
-			ID:   3,
-			Path: "l0_batches/batch3",
+			Attrs: dto.L0BatchAttrs{
+				Path: "l0_batches/batch3",
+			},
 		},
 		{
-			ID:   2,
-			Path: "l0_batches/batch2",
+			Attrs: dto.L0BatchAttrs{
+				Path: "l0_batches/batch2",
+			},
 		},
 		{
-			ID:   1,
-			Path: "l0_batches/batch1",
+			Attrs: dto.L0BatchAttrs{
+				Path: "l0_batches/batch1",
+			},
 		},
 	}
 

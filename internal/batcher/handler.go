@@ -14,6 +14,7 @@ import (
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	"github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/recordio"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/thanos-io/objstore"
@@ -238,8 +239,9 @@ func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) err
 	}
 
 	// Add record to database
-	if _, err := h.db.AddL0Batch(ctx, database.AddL0BatchParams{
+	if err := h.db.AddL0Batch(ctx, dto.L0BatchAttrs{
 		Path:      objPath,
+		CreatedAt: time.Now(),
 		SizeBytes: sizeBytes,
 		MinKey:    minKey,
 		MaxKey:    maxKey,

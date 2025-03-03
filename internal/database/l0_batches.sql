@@ -1,24 +1,20 @@
--- name: AddL0Batch :one
-INSERT INTO l0_batches (path, size_bytes, min_key, max_key) VALUES (@path, @size_bytes, @min_key, @max_key) RETURNING id;
+-- name: AddL0Batch :exec
+INSERT INTO l0_batches (attrs) VALUES (@attrs);
 
 -- name: GetL0Batches :many
 SELECT * FROM l0_batches;
 
--- name: GetL0BatchesByID :many
+-- name: GetL0BatchesBySeqNo :many
 SELECT * FROM l0_batches
-WHERE id = ANY(@batch_ids::bigint[]);
+WHERE seq_no = ANY(@batch_seq_nos::bigint[]);
 
--- name: UpdateL0BatchesStatus :one
-WITH updated AS (
-  UPDATE l0_batches
-  SET status = @new_status::text
-  WHERE id = ANY(@batch_ids::bigint[])
-    AND status = @current_status::text
-  RETURNING id
-)
-SELECT count(*) FROM updated;
+-- name: UpdateL0Batch :one
+UPDATE l0_batches
+SET attrs = attrs || @attrs
+WHERE seq_no = @seq_no AND version = @version
+RETURNING *;
 
--- name: DeleteL0Batches :exec
+-- name: DeleteL0Batch :one
 DELETE FROM l0_batches
-WHERE id = ANY(@batch_ids::bigint[])
-  AND status = @current_status::text;
+WHERE seq_no = @seq_no AND version = @version
+RETURNING *;

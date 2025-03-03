@@ -5,15 +5,11 @@
 package database
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	dto "github.com/dynoinc/skyvault/internal/database/dto"
 )
 
 type L0Batch struct {
-	ID        int64
-	Path      string
-	SizeBytes int64
-	MinKey    string
-	MaxKey    string
-	Status    string
-	CreatedAt pgtype.Timestamptz
+	SeqNo   int64
+	Version int32
+	Attrs   dto.L0BatchAttrs
 }
