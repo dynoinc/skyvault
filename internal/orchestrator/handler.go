@@ -21,9 +21,9 @@ import (
 // Config holds the configuration for the orchestrator service
 type Config struct {
 	Enabled              bool `default:"false"`
-	MaxL0Batches         int  `default:"4"`
-	MinL0MergedBatchSize int  `default:"16777216"` // 16MB
-	MaxL0MergedBatchSize int  `default:"67108864"` // 64MB
+	MinL0Batches         int  `default:"4"`        // number of batches we are ok with in L0 level.
+	MaxL0Batches         int  `default:"16"`       // number of batches beyond which we merge even if target size is not met.
+	MaxL0MergedBatchSize int  `default:"67108864"` // number of bytes we try to limit merged batch size to.
 }
 
 // handler implements the OrchestratorService
@@ -65,11 +65,7 @@ func NewHandler(
 	return h, nil
 }
 
-func mergeableBatches(l0Batches []database.L0Batch, maxL0Batches int, minL0MergedBatchSize int, maxL0MergedBatchSize int) ([]database.L0Batch, int64) {
-	if len(l0Batches) <= maxL0Batches {
-		return nil, 0
-	}
-
+func mergeableBatches(l0Batches []database.L0Batch, minL0Batches int, maxL0Batches int, maxL0MergedBatchSize int) ([]database.L0Batch, int64) {
 	// Sort batches by SeqNo (ascending)
 	sort.Slice(l0Batches, func(i, j int) bool {
 		return l0Batches[i].SeqNo < l0Batches[j].SeqNo
@@ -79,7 +75,8 @@ func mergeableBatches(l0Batches []database.L0Batch, maxL0Batches int, minL0Merge
 		l0Batches = l0Batches[1:]
 	}
 
-	if len(l0Batches) == 0 {
+	// If we have fewer than minL0Batches, nothing to do.
+	if len(l0Batches) <= minL0Batches {
 		return nil, 0
 	}
 
@@ -91,18 +88,18 @@ func mergeableBatches(l0Batches []database.L0Batch, maxL0Batches int, minL0Merge
 		l0Batches = l0Batches[1:]
 	}
 
-	if len(batchesToMerge) <= 1 || totalSize < int64(minL0MergedBatchSize) {
-		return nil, 0
+	if len(batchesToMerge) > maxL0Batches || totalSize > int64(maxL0MergedBatchSize) {
+		return batchesToMerge, totalSize
 	}
 
-	return batchesToMerge, totalSize
+	return nil, 0
 }
 
 func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	batchesToMerge, totalSize := mergeableBatches(
 		l0Batches,
+		h.config.MinL0Batches,
 		h.config.MaxL0Batches,
-		h.config.MinL0MergedBatchSize,
 		h.config.MaxL0MergedBatchSize,
 	)
 	if batchesToMerge == nil {
