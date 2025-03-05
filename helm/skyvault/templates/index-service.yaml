@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: index
     skyvault.io/instance: {{ .Values.index.instance }}
 spec:
-  type: {{ .Values.service.type }}
+  type: NodePort
   ports:
     - port: {{ .Values.index.port }}
       targetPort: {{ .Values.index.port }}

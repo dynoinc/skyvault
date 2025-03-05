@@ -7,7 +7,7 @@ metadata:
     {{- include "skyvault.labels" . | nindent 4 }}
     app.kubernetes.io/component: orchestrator
 spec:
-  type: {{ .Values.service.type }}
+  type: NodePort
   ports:
     - port: {{ .Values.orchestrator.port }}
       targetPort: {{ .Values.orchestrator.port }}

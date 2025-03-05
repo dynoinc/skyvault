@@ -144,10 +144,6 @@ worker:
       memory: "256Mi"
       cpu: "200m"
 
-# Service configuration - Use NodePort for easier access in Minikube
-service:
-  type: NodePort
-  
 # Disable features not needed for local development
 ingress:
   enabled: false 

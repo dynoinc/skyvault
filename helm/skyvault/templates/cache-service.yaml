@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: cache
     skyvault.io/instance: {{ .Values.cache.instance }}
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: {{ .Values.cache.port }}
       targetPort: {{ .Values.cache.port }}
