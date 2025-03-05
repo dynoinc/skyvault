@@ -28,6 +28,9 @@ SkyVault's architecture is designed for high scalability and performance:
 | [MinIO](https://min.io/) | S3-compatible object storage |
 | [Prometheus](https://prometheus.io/) | Monitoring and metrics |
 | [River](https://github.com/riverqueue/river) | Background job processing |
+| [Kubernetes](https://kubernetes.io/) | Container orchestration platform |
+| [Helm](https://helm.sh/) | Package manager for Kubernetes |
+| [Podman](https://podman.io/) | Daemonless container engine |
 
 ## Development
 
