@@ -140,6 +140,9 @@ func main() {
 	// Create the gRPC health checker
 	healthSvc := grpchealth.NewStaticChecker()
 
+	// Collect enabled service names for reflection
+	var enabledServices []string
+
 	// Register Connect service handlers
 	if c.Batcher.Enabled {
 		batcherHandler := batcher.NewHandler(ctx, c.Batcher, database.New(db), store)
@@ -152,6 +155,7 @@ func main() {
 		// Set health status for BatcherService
 		healthSvc.SetStatus(batcherv1connect.BatcherServiceName, grpchealth.StatusServing)
 		slog.InfoContext(ctx, "BatcherService enabled and healthy", "service", batcherv1connect.BatcherServiceName)
+		enabledServices = append(enabledServices, batcherv1connect.BatcherServiceName)
 	}
 
 	if c.Cache.Enabled {
@@ -165,6 +169,7 @@ func main() {
 		// Set health status for CacheService
 		healthSvc.SetStatus(cachev1connect.CacheServiceName, grpchealth.StatusServing)
 		slog.InfoContext(ctx, "CacheService enabled and healthy", "service", cachev1connect.CacheServiceName)
+		enabledServices = append(enabledServices, cachev1connect.CacheServiceName)
 	}
 
 	if c.Index.Enabled {
@@ -183,6 +188,7 @@ func main() {
 		// Set health status for IndexService
 		healthSvc.SetStatus(indexv1connect.IndexServiceName, grpchealth.StatusServing)
 		slog.InfoContext(ctx, "IndexService enabled and healthy", "service", indexv1connect.IndexServiceName)
+		enabledServices = append(enabledServices, indexv1connect.IndexServiceName)
 	}
 
 	if c.Orchestrator.Enabled {
@@ -201,6 +207,7 @@ func main() {
 		// Set health status for OrchestratorService
 		healthSvc.SetStatus(orchestratorv1connect.OrchestratorServiceName, grpchealth.StatusServing)
 		slog.InfoContext(ctx, "OrchestratorService enabled and healthy", "service", orchestratorv1connect.OrchestratorServiceName)
+		enabledServices = append(enabledServices, orchestratorv1connect.OrchestratorServiceName)
 	}
 
 	if c.Worker.Enabled {
@@ -219,6 +226,7 @@ func main() {
 		// Set health status for WorkerService
 		healthSvc.SetStatus(workerv1connect.WorkerServiceName, grpchealth.StatusServing)
 		slog.InfoContext(ctx, "WorkerService enabled and healthy", "service", workerv1connect.WorkerServiceName)
+		enabledServices = append(enabledServices, workerv1connect.WorkerServiceName)
 	}
 
 	// Set the overall service status
@@ -229,17 +237,16 @@ func main() {
 	mux.Handle(healthPath, healthHandler)
 	slog.InfoContext(ctx, "gRPC health check service initialized", "path", healthPath)
 
-	// Register gRPC reflection service
+	// Register gRPC reflection service with only enabled services
 	reflector := grpcreflect.NewStaticReflector(
-		batcherv1connect.BatcherServiceName,
-		cachev1connect.CacheServiceName,
-		indexv1connect.IndexServiceName,
-		orchestratorv1connect.OrchestratorServiceName,
-		workerv1connect.WorkerServiceName,
+		append(enabledServices, grpchealth.HealthV1ServiceName)...,
 	)
 	reflectPath, reflectHandler := grpcreflect.NewHandlerV1(reflector)
 	mux.Handle(reflectPath, reflectHandler)
-	slog.InfoContext(ctx, "gRPC reflection service initialized", "path_v1", reflectPath)
+	slog.InfoContext(ctx, "gRPC reflection service initialized",
+		"path_v1", reflectPath,
+		"enabled_services", enabledServices,
+	)
 
 	// Register HTTP endpoints
 	mux.HandleFunc("GET /metrics", promhttp.Handler().ServeHTTP)

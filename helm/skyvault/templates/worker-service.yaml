@@ -12,7 +12,6 @@ spec:
     - port: {{ .Values.worker.port }}
       targetPort: grpc
       protocol: TCP
-      name: grpc
   selector:
     {{- include "skyvault.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: worker
