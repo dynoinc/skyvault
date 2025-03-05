@@ -3,7 +3,7 @@
 
 # Common image settings
 image:
-  repository: docker.io/library/skyvault
+  repository: localhost/skyvault
   pullPolicy: IfNotPresent
   tag: "dev"
 

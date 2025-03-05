@@ -15,16 +15,16 @@ test: lint
   go build ./...
   go test -v -race ./...
 
-# Fast development mode using minimal Docker image with just the binary
+# Fast development mode using minimal container image with just the binary
 k8s-dev:
     # Build the binary for Linux (since k8s nodes run Linux)
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/skyvault ./cmd/skyvault
     
-    # Build a minimal Docker image with just the binary
-    docker build --no-cache -t skyvault:dev -f Dockerfile.dev .
+    # Build a minimal container image with just the binary
+    podman build --no-cache -t skyvault:dev -f Dockerfile.dev .
     
-    # Save the Docker image to a tar file
-    docker save skyvault:dev -o ./bin/skyvault-dev.tar
+    # Save the container image to a tar file
+    podman save skyvault:dev -o ./bin/skyvault-dev.tar
     
     # Copy the tar file to Minikube VM and load it using ssh
     minikube cp ./bin/skyvault-dev.tar /tmp/skyvault-dev.tar

@@ -34,7 +34,7 @@ SkyVault's architecture is designed for high scalability and performance:
 ### Prerequisites
 
 - Go 1.24+
-- Docker, k8s and helm for local development
+- Podman, k8s and helm for local development
 - [Just](https://github.com/casey/just) command runner
 
 ### Getting Started

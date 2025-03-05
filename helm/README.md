@@ -9,7 +9,7 @@ Before deploying, make sure you have the following prerequisites installed:
 1. [Minikube](https://minikube.sigs.k8s.io/docs/start/) - A local Kubernetes cluster
 2. [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) - The Kubernetes command-line tool
 3. [Helm](https://helm.sh/docs/intro/install/) - The package manager for Kubernetes
-4. [Docker](https://docs.docker.com/get-docker/) - For building container images
+4. [Podman](https://podman.io/getting-started/installation) - For building container images
 
 ## Deploying to Minikube
 
@@ -23,18 +23,20 @@ minikube start --cpus=4 --memory=8g --disk-size=20g
 
 You can adjust the resources based on your machine capabilities.
 
-### Step 2: Build and load the Docker image
+### Step 2: Build and load the Podman image
 
-Build the SkyVault Docker image from the project root:
+Build the SkyVault Podman image from the project root:
 
 ```bash
-docker build -t skyvault:latest .
+podman build -t skyvault:latest .
 ```
 
-Load the built image into Minikube's Docker daemon:
+Load the built image into Minikube:
 
 ```bash
-minikube image load skyvault:latest
+podman save skyvault:latest -o /tmp/skyvault.tar
+minikube cp /tmp/skyvault.tar /tmp/skyvault.tar
+minikube ssh "docker load < /tmp/skyvault.tar"
 ```
 
 ### Step 3: Enable the necessary add-ons
@@ -53,12 +55,16 @@ You have two options for handling the PostgreSQL and MinIO dependencies:
 
 ```bash
 # Pull the images
-docker pull postgres:16
-docker pull minio/minio:latest
+podman pull postgres:16
+podman pull minio/minio:latest
 
 # Load them into Minikube
-minikube image load postgres:16
-minikube image load minio/minio:latest
+podman save postgres:16 -o /tmp/postgres.tar
+podman save minio/minio:latest -o /tmp/minio.tar
+minikube cp /tmp/postgres.tar /tmp/postgres.tar
+minikube cp /tmp/minio.tar /tmp/minio.tar
+minikube ssh "docker load < /tmp/postgres.tar"
+minikube ssh "docker load < /tmp/minio.tar"
 ```
 
 #### Option B: Use imagePullPolicy: IfNotPresent (default in values-minikube.yaml)
@@ -243,8 +249,8 @@ If you see errors like `ErrImageNeverPull` for PostgreSQL or MinIO pods:
 
 2. **Option 2**: Pre-load the required images into Minikube:
    ```bash
-   docker pull postgres:16
-   docker pull minio/minio:latest
+   podman pull postgres:16
+   podman pull minio/minio:latest
    minikube image load postgres:16
    minikube image load minio/minio:latest
    ```
@@ -312,7 +318,7 @@ If Minikube has trouble finding your locally built image:
 ```bash
 # Rebuild and reload the image to Minikube
 eval $(minikube docker-env)
-docker build -t skyvault:latest .
+podman build -t skyvault:latest .
 ```
 
 ### MinIO Bucket Creation Failure
