@@ -11,6 +11,7 @@ import (
 	"path"
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/recordio"
@@ -21,6 +22,7 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
@@ -120,6 +122,7 @@ func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0B
 		Attrs: commonv1.L0Batch_builder{
 			State:     commonv1.L0Batch_MERGED.Enum(),
 			Path:      proto.String(objPath),
+			CreatedAt: timestamppb.New(time.Now()),
 			SizeBytes: proto.Int64(sizeBytes),
 			MinKey:    proto.String(minKey),
 			MaxKey:    proto.String(maxKey),

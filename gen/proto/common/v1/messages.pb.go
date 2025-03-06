@@ -70,13 +70,12 @@ func (x L0Batch_State) Number() protoreflect.EnumNumber {
 
 type L0Batch struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Path        *string                `protobuf:"bytes,2,opt,name=path"`
-	xxx_hidden_State       L0Batch_State          `protobuf:"varint,3,opt,name=state,enum=common.v1.L0Batch_State"`
-	xxx_hidden_CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt"`
-	xxx_hidden_SizeBytes   int64                  `protobuf:"varint,5,opt,name=size_bytes,json=sizeBytes"`
-	xxx_hidden_MinKey      *string                `protobuf:"bytes,6,opt,name=min_key,json=minKey"`
-	xxx_hidden_MaxKey      *string                `protobuf:"bytes,7,opt,name=max_key,json=maxKey"`
+	xxx_hidden_Path        *string                `protobuf:"bytes,1,opt,name=path"`
+	xxx_hidden_State       L0Batch_State          `protobuf:"varint,2,opt,name=state,enum=common.v1.L0Batch_State"`
+	xxx_hidden_CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt"`
+	xxx_hidden_SizeBytes   int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes"`
+	xxx_hidden_MinKey      *string                `protobuf:"bytes,5,opt,name=min_key,json=minKey"`
+	xxx_hidden_MaxKey      *string                `protobuf:"bytes,6,opt,name=max_key,json=maxKey"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -108,16 +107,6 @@ func (x *L0Batch) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *L0Batch) GetId() string {
-	if x != nil {
-		if x.xxx_hidden_Id != nil {
-			return *x.xxx_hidden_Id
-		}
-		return ""
-	}
-	return ""
-}
-
 func (x *L0Batch) GetPath() string {
 	if x != nil {
 		if x.xxx_hidden_Path != nil {
@@ -130,7 +119,7 @@ func (x *L0Batch) GetPath() string {
 
 func (x *L0Batch) GetState() L0Batch_State {
 	if x != nil {
-		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
 			return x.xxx_hidden_State
 		}
 	}
@@ -171,19 +160,14 @@ func (x *L0Batch) GetMaxKey() string {
 	return ""
 }
 
-func (x *L0Batch) SetId(v string) {
-	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
-}
-
 func (x *L0Batch) SetPath(v string) {
 	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *L0Batch) SetState(v L0Batch_State) {
 	x.xxx_hidden_State = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
 func (x *L0Batch) SetCreatedAt(v *timestamppb.Timestamp) {
@@ -192,38 +176,31 @@ func (x *L0Batch) SetCreatedAt(v *timestamppb.Timestamp) {
 
 func (x *L0Batch) SetSizeBytes(v int64) {
 	x.xxx_hidden_SizeBytes = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
 }
 
 func (x *L0Batch) SetMinKey(v string) {
 	x.xxx_hidden_MinKey = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
 }
 
 func (x *L0Batch) SetMaxKey(v string) {
 	x.xxx_hidden_MaxKey = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
-}
-
-func (x *L0Batch) HasId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
 }
 
 func (x *L0Batch) HasPath() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
 func (x *L0Batch) HasState() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
 func (x *L0Batch) HasCreatedAt() bool {
@@ -237,35 +214,30 @@ func (x *L0Batch) HasSizeBytes() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
 func (x *L0Batch) HasMinKey() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
 func (x *L0Batch) HasMaxKey() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
-}
-
-func (x *L0Batch) ClearId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
 func (x *L0Batch) ClearPath() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Path = nil
 }
 
 func (x *L0Batch) ClearState() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
 	x.xxx_hidden_State = L0Batch_UNSPECIFIED
 }
 
@@ -274,24 +246,23 @@ func (x *L0Batch) ClearCreatedAt() {
 }
 
 func (x *L0Batch) ClearSizeBytes() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
 	x.xxx_hidden_SizeBytes = 0
 }
 
 func (x *L0Batch) ClearMinKey() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_MinKey = nil
 }
 
 func (x *L0Batch) ClearMaxKey() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
 	x.xxx_hidden_MaxKey = nil
 }
 
 type L0Batch_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id        *string
 	Path      *string
 	State     *L0Batch_State
 	CreatedAt *timestamppb.Timestamp
@@ -305,29 +276,25 @@ func (b0 L0Batch_builder) Build() *L0Batch {
 	m0 := &L0Batch{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
-		x.xxx_hidden_Id = b.Id
-	}
 	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_Path = b.Path
 	}
 	if b.State != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
 		x.xxx_hidden_State = *b.State
 	}
 	x.xxx_hidden_CreatedAt = b.CreatedAt
 	if b.SizeBytes != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
 		x.xxx_hidden_SizeBytes = *b.SizeBytes
 	}
 	if b.MinKey != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
 		x.xxx_hidden_MinKey = b.MinKey
 	}
 	if b.MaxKey != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
 		x.xxx_hidden_MaxKey = b.MaxKey
 	}
 	return m0
@@ -340,21 +307,20 @@ var file_proto_common_v1_messages_proto_rawDesc = string([]byte{
 	0x31, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x12, 0x09, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x1a, 0x1f, 0x67, 0x6f, 0x6f,
 	0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d,
-	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xa5, 0x02, 0x0a,
-	0x07, 0x4c, 0x30, 0x42, 0x61, 0x74, 0x63, 0x68, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x2e, 0x0a, 0x05,
-	0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x18, 0x2e, 0x63, 0x6f,
+	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x95, 0x02, 0x0a,
+	0x07, 0x4c, 0x30, 0x42, 0x61, 0x74, 0x63, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x2e, 0x0a, 0x05,
+	0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x18, 0x2e, 0x63, 0x6f,
 	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x30, 0x42, 0x61, 0x74, 0x63, 0x68, 0x2e,
 	0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x12, 0x39, 0x0a, 0x0a,
-	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b,
+	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
 	0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
 	0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x63, 0x72,
 	0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x69, 0x7a, 0x65, 0x5f,
-	0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x73, 0x69, 0x7a,
+	0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x73, 0x69, 0x7a,
 	0x65, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12, 0x17, 0x0a, 0x07, 0x6d, 0x69, 0x6e, 0x5f, 0x6b, 0x65,
-	0x79, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x69, 0x6e, 0x4b, 0x65, 0x79, 0x12,
-	0x17, 0x0a, 0x07, 0x6d, 0x61, 0x78, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09,
+	0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x69, 0x6e, 0x4b, 0x65, 0x79, 0x12,
+	0x17, 0x0a, 0x07, 0x6d, 0x61, 0x78, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x06, 0x6d, 0x61, 0x78, 0x4b, 0x65, 0x79, 0x22, 0x3a, 0x0a, 0x05, 0x53, 0x74, 0x61, 0x74,
 	0x65, 0x12, 0x0f, 0x0a, 0x0b, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44,
 	0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x4e, 0x45, 0x57, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x4d,

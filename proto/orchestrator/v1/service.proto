@@ -14,5 +14,11 @@ message ListL0BatchesRequest {
 }
 
 message ListL0BatchesResponse {
-    repeated common.v1.L0Batch l0_batches = 1;
+    repeated L0Batch l0_batches = 1;
+}
+
+message L0Batch {
+    int64 seq_no = 1;
+    int32 version = 2;
+    common.v1.L0Batch attrs = 3;
 }

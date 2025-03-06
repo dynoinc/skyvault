@@ -84,19 +84,13 @@ k8s-stress:
     KEY_SIZE=${KEY_SIZE:-16}
     VALUE_SIZE=${VALUE_SIZE:-100}
     BATCH_SIZE=${BATCH_SIZE:-10}
-    NAMESPACE=${NAMESPACE:-default}
     SERVICE=${SERVICE:-both}
-    BATCHER_NAME=${BATCHER_NAME:-skyvault-batcher}
-    INDEX_NAME=${INDEX_NAME:-skyvault-index-default}
     READ_MODE=${READ_MODE:-mixed}
     DEBUG=${DEBUG:-false}
     
     echo "Running stress test against Kubernetes services (${SERVICE})..."
     ./bin/stress \
-      --namespace="$NAMESPACE" \
       --service="$SERVICE" \
-      --batcher-name="$BATCHER_NAME" \
-      --index-name="$INDEX_NAME" \
       --concurrency="$CONCURRENCY" \
       --duration="$DURATION" \
       --key-size="$KEY_SIZE" \

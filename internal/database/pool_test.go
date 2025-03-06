@@ -16,6 +16,9 @@ import (
 func TestPool(t *testing.T) {
 	ctx := t.Context()
 
+	// https://github.com/testcontainers/testcontainers-go/issues/2264
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 	// Start PostgreSQL container with version 16
 	postgresContainer, err := postgres.Run(ctx, "postgres:16", tc.CustomizeRequestOption(func(req *tc.GenericContainerRequest) error {
 		req.ProviderType = tc.ProviderPodman
@@ -49,27 +52,23 @@ func TestPool(t *testing.T) {
 	require.NoError(t, err, "l0_batches table should exist")
 	require.Equal(t, 0, count, "l0_batches table should be empty")
 
-	// Test UpdateL0BatchesStatus
+	// Test UpdateL0Batch
 	// 1. Add some test batches
-	id := "1"
 	createdAt := timestamppb.New(time.Now())
 	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
-		Id:        &id,
 		CreatedAt: createdAt,
 		State:     v1.L0Batch_NEW.Enum(),
 	}.Build())
 	require.NoError(t, err)
 
-	id2 := "2"
 	createdAt2 := timestamppb.New(createdAt.AsTime().Add(time.Second))
 	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
-		Id:        &id2,
 		CreatedAt: createdAt2,
-		State:     v1.L0Batch_MERGING.Enum(),
+		State:     v1.L0Batch_NEW.Enum(),
 	}.Build())
 	require.NoError(t, err)
 
-	// 2. Verify the batches are added with ACTIVE status by default
+	// 2. Verify the batches are added
 	batches, err := q.GetL0BatchesBySeqNo(ctx, []int64{1, 2})
 	require.NoError(t, err)
 	require.Len(t, batches, 2)
@@ -84,18 +83,9 @@ func TestPool(t *testing.T) {
 	assert.Equal(t, int64(1), updated.SeqNo)
 	assert.Equal(t, int32(2), updated.Version)
 	assert.Equal(t, v1.L0Batch_MERGING, updated.Attrs.GetState())
+	assert.Equal(t, createdAt, updated.Attrs.GetCreatedAt())
 
-	// 4. Test that UpdateL0BatchesStatus only updates rows with the matching version
-	id3 := "3"
-	createdAt3 := timestamppb.New(createdAt.AsTime().Add(time.Second * 2))
-	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
-		Id:        &id3,
-		CreatedAt: createdAt3,
-		State:     v1.L0Batch_MERGING.Enum(),
-	}.Build())
-	require.NoError(t, err)
-
-	// Try to update all batch with version 5
+	// 4. Test that UpdateL0Batch only updates rows with the matching version
 	updated, err = q.UpdateL0Batch(ctx, UpdateL0BatchParams{
 		SeqNo:   1,
 		Version: 5,
@@ -104,7 +94,7 @@ func TestPool(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, pgx.ErrNoRows, err)
 
-	// Try to delete a batch with version 5
+	// 5. Try to delete a batch with version 5
 	_, err = q.DeleteL0Batch(ctx, DeleteL0BatchParams{
 		SeqNo:   1,
 		Version: 5,

@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -32,22 +29,10 @@ type config struct {
 	KeySize     int
 	ValueSize   int
 	BatchSize   int
-	Namespace   string
-	BatcherName string
-	IndexName   string
-	BatcherPort int
-	IndexPort   int
+	BatcherAddr string
+	IndexAddr   string
 	ReadMode    string // For index service: "written", "notwritten", "deleted", "mixed"
 	Debug       bool   // Enable debug output
-}
-
-// Service represents a simplified Kubernetes service structure
-type Service struct {
-	Spec struct {
-		Ports []struct {
-			Port int `json:"port"`
-		} `json:"ports"`
-	} `json:"spec"`
 }
 
 // Metrics collected during the test
@@ -110,9 +95,8 @@ func main() {
 	flag.IntVar(&cfg.KeySize, "key-size", 16, "Size of keys in bytes")
 	flag.IntVar(&cfg.ValueSize, "value-size", 100, "Size of values in bytes")
 	flag.IntVar(&cfg.BatchSize, "batch-size", 10, "Number of keys in each batch")
-	flag.StringVar(&cfg.Namespace, "namespace", "default", "Kubernetes namespace")
-	flag.StringVar(&cfg.BatcherName, "batcher-name", "skyvault-batcher", "Kubernetes batcher service name")
-	flag.StringVar(&cfg.IndexName, "index-name", "skyvault-index", "Kubernetes index service name")
+	flag.StringVar(&cfg.BatcherAddr, "batcher-addr", "http://localhost:5001", "Batcher service address")
+	flag.StringVar(&cfg.IndexAddr, "index-addr", "http://localhost:5003", "Index service address")
 	flag.StringVar(&cfg.ReadMode, "read-mode", "mixed", "For index service: written, notwritten, deleted, mixed")
 	flag.BoolVar(&cfg.Debug, "debug", true, "Enable debug output")
 	flag.Parse()
@@ -120,123 +104,9 @@ func main() {
 	// Setup for tracking metrics for each service
 	allMetrics := []*metrics{}
 
-	// Test batcher if specified
-	var batcherTarget string
-	var indexTarget string
 	var writtenKeys []string   // Track written keys for index service testing
 	var deletedKeys []string   // Track deleted keys for index service testing
 	var unwrittenKeys []string // Track unwritten keys for index service testing
-
-	if cfg.Service == "batcher" || cfg.Service == "both" {
-		// Discover the batcher service port from Kubernetes
-		batcherPort, err := getK8sServicePort(cfg.Namespace, cfg.BatcherName)
-		if err != nil {
-			log.Fatalf("Failed to discover batcher service port: %v", err)
-		}
-
-		fmt.Printf("Discovered Kubernetes batcher service port: %d\n", batcherPort)
-		cfg.BatcherPort = batcherPort
-
-		// Setup port-forwarding to Kubernetes for batcher
-		fmt.Printf("Setting up port-forwarding to %s.%s on local port %d\n",
-			cfg.BatcherName, cfg.Namespace, cfg.BatcherPort)
-
-		batcherTarget = fmt.Sprintf("http://localhost:%d", cfg.BatcherPort)
-
-		// Start port-forwarding for batcher
-		batcherPortForwardCmd := exec.Command("kubectl", "port-forward",
-			fmt.Sprintf("service/%s", cfg.BatcherName),
-			fmt.Sprintf("%d:%d", cfg.BatcherPort, batcherPort),
-			"-n", cfg.Namespace)
-
-		batcherPortForwardCmd.Stdout = io.Discard
-		batcherPortForwardCmd.Stderr = os.Stderr
-
-		err = batcherPortForwardCmd.Start()
-		if err != nil {
-			log.Fatalf("Failed to start port-forwarding for batcher: %v", err)
-		}
-
-		defer func() {
-			if batcherPortForwardCmd.Process != nil {
-				fmt.Println("Stopping batcher port-forwarding...")
-				batcherPortForwardCmd.Process.Signal(os.Interrupt)
-				batcherPortForwardCmd.Wait()
-			}
-		}()
-
-		// Try simple HTTP connection to check if batcher service is ready
-		fmt.Println("Waiting for batcher service to be ready...")
-		waitForServiceReady(batcherTarget)
-	}
-
-	// Setup index service if needed
-	if cfg.Service == "index" || cfg.Service == "both" {
-		// Discover the index service port from Kubernetes
-		indexPort, err := getK8sServicePort(cfg.Namespace, cfg.IndexName)
-		if err != nil {
-			log.Fatalf("Failed to discover index service port: %v", err)
-		}
-
-		fmt.Printf("Discovered Kubernetes index service port: %d\n", indexPort)
-		cfg.IndexPort = indexPort
-
-		// Setup port-forwarding to Kubernetes for index service
-		fmt.Printf("Setting up port-forwarding to %s.%s on local port %d\n",
-			cfg.IndexName, cfg.Namespace, cfg.IndexPort)
-
-		indexTarget = fmt.Sprintf("http://localhost:%d", cfg.IndexPort)
-
-		// Start port-forwarding for index
-		indexPortForwardCmd := exec.Command("kubectl", "port-forward",
-			fmt.Sprintf("service/%s", cfg.IndexName),
-			fmt.Sprintf("%d:%d", cfg.IndexPort, indexPort),
-			"-n", cfg.Namespace)
-
-		indexPortForwardCmd.Stdout = io.Discard
-		indexPortForwardCmd.Stderr = os.Stderr
-
-		err = indexPortForwardCmd.Start()
-		if err != nil {
-			log.Fatalf("Failed to start port-forwarding for index: %v", err)
-		}
-
-		defer func() {
-			if indexPortForwardCmd.Process != nil {
-				fmt.Println("Stopping index port-forwarding...")
-				indexPortForwardCmd.Process.Signal(os.Interrupt)
-				indexPortForwardCmd.Wait()
-			}
-		}()
-
-		// Try simple HTTP connection to check if index service is ready
-		fmt.Println("Waiting for index service to be ready...")
-		waitForServiceReady(indexTarget)
-	}
-
-	// Create base context
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Handle SIGINT (Ctrl+C)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		fmt.Println("\nInterrupted, stopping test...")
-		cancel()
-	}()
-
-	// Print test configuration
-	fmt.Printf("Stress testing service(s): %s\n", cfg.Service)
-	fmt.Printf("Concurrency: %d, Duration: %s\n", cfg.Concurrency, cfg.Duration)
-	fmt.Printf("Key size: %d bytes, Value size: %d bytes, Batch size: %d\n",
-		cfg.KeySize, cfg.ValueSize, cfg.BatchSize)
-	if cfg.Service == "index" || cfg.Service == "both" {
-		fmt.Printf("Index service read mode: %s\n", cfg.ReadMode)
-	}
-	fmt.Println("Press Ctrl+C to stop the test early")
-	fmt.Println()
 
 	// Generate test data for tracking
 	testDataSize := cfg.BatchSize * 3 // We'll use 3x batch size to have enough test data
@@ -283,6 +153,30 @@ func main() {
 	actualWrittenKeys := make(map[string]bool)
 	actualDeletedKeys := make(map[string]bool)
 
+	// Create base context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle SIGINT (Ctrl+C)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		fmt.Println("\nInterrupted, stopping test...")
+		cancel()
+	}()
+
+	// Print test configuration
+	fmt.Printf("Stress testing service(s): %s\n", cfg.Service)
+	fmt.Printf("Concurrency: %d, Duration: %s\n", cfg.Concurrency, cfg.Duration)
+	fmt.Printf("Key size: %d bytes, Value size: %d bytes, Batch size: %d\n",
+		cfg.KeySize, cfg.ValueSize, cfg.BatchSize)
+	if cfg.Service == "index" || cfg.Service == "both" {
+		fmt.Printf("Index service read mode: %s\n", cfg.ReadMode)
+	}
+	fmt.Println("Press Ctrl+C to stop the test early")
+	fmt.Println()
+
 	// Run the batcher test if requested
 	if cfg.Service == "batcher" || cfg.Service == "both" {
 		// Create metrics collector for batcher
@@ -290,7 +184,7 @@ func main() {
 		batcherMetrics.startTime = time.Now()
 
 		// Run the batcher write test
-		stressBatcher(ctx, cfg, batcherTarget, batcherMetrics, writtenKeys, deletedKeys, actualWrittenKeys, actualDeletedKeys)
+		stressBatcher(ctx, cfg, cfg.BatcherAddr, batcherMetrics, writtenKeys, deletedKeys, actualWrittenKeys, actualDeletedKeys)
 
 		batcherMetrics.endTime = time.Now()
 		allMetrics = append(allMetrics, batcherMetrics)
@@ -308,7 +202,7 @@ func main() {
 		}
 
 		// Run the index read test
-		stressIndex(ctx, cfg, indexTarget, indexMetrics, actualWrittenKeys, unwrittenKeys, actualDeletedKeys)
+		stressIndex(ctx, cfg, cfg.IndexAddr, indexMetrics, actualWrittenKeys, unwrittenKeys, actualDeletedKeys)
 
 		indexMetrics.endTime = time.Now()
 		allMetrics = append(allMetrics, indexMetrics)
@@ -334,33 +228,6 @@ func waitForServiceReady(target string) {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-}
-
-// getK8sServicePort retrieves the port for a Kubernetes service
-func getK8sServicePort(namespace, serviceName string) (int, error) {
-	// Use kubectl to get the service information in JSON format
-	cmd := exec.Command("kubectl", "get", "service", serviceName, "-n", namespace, "-o", "json")
-	output, err := cmd.Output()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			return 0, fmt.Errorf("kubectl error: %s: %s", err, exitErr.Stderr)
-		}
-		return 0, fmt.Errorf("failed to execute kubectl: %v", err)
-	}
-
-	// Parse the JSON output
-	var service Service
-	if err := json.Unmarshal(output, &service); err != nil {
-		return 0, fmt.Errorf("failed to parse kubectl output: %v", err)
-	}
-
-	// Extract the port
-	if len(service.Spec.Ports) == 0 {
-		return 0, fmt.Errorf("no ports found for service %s", serviceName)
-	}
-
-	// Return the first port
-	return service.Spec.Ports[0].Port, nil
 }
 
 func stressBatcher(ctx context.Context, cfg config, target string, m *metrics, writtenKeys, deletedKeys []string, actualWrittenKeys, actualDeletedKeys map[string]bool) {

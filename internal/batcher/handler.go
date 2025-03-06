@@ -242,6 +242,7 @@ func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) err
 
 	// Add record to database
 	if err := h.db.AddL0Batch(ctx, commonv1.L0Batch_builder{
+		State:     commonv1.L0Batch_NEW.Enum(),
 		Path:      proto.String(objPath),
 		CreatedAt: timestamppb.New(time.Now()),
 		SizeBytes: proto.Int64(sizeBytes),

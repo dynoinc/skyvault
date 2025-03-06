@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"google.golang.org/protobuf/proto"
 )
 
 // Config holds the configuration for the orchestrator service
@@ -109,9 +111,11 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 
 	qtx := database.New(tx)
 
-	// Lock all these batches and insert job in 1 txn.
-	for _, batch := range batchesToMerge {
-		_, err := qtx.UpdateL0Batch(h.ctx, database.UpdateL0BatchParams{
+	// Lock all these batches and insert job in 1 txn. We send updated batches to river
+	// so that it has the latest version of the batch.
+	updatedBatchesToMerge := make([]database.L0Batch, len(batchesToMerge))
+	for i, batch := range batchesToMerge {
+		updatedBatchesToMerge[i], err = qtx.UpdateL0Batch(h.ctx, database.UpdateL0BatchParams{
 			SeqNo:   batch.SeqNo,
 			Version: batch.Version,
 			Attrs:   commonv1.L0Batch_builder{State: commonv1.L0Batch_MERGING.Enum()}.Build(),
@@ -127,7 +131,7 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	}
 
 	_, err = h.riverClient.InsertTx(h.ctx, tx, background.MergeL0BatchesArgs{
-		Batches: batchesToMerge,
+		Batches: updatedBatchesToMerge,
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to schedule merge job: %w", err)
@@ -165,10 +169,18 @@ func (h *handler) ListL0Batches(context.Context, *connect.Request[v1.ListL0Batch
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get L0 batches: %w", err))
 	}
 
-	protoBatches := make([]*commonv1.L0Batch, len(l0Batches))
+	protoBatches := make([]*v1.L0Batch, len(l0Batches))
 	for i, batch := range l0Batches {
-		protoBatches[i] = batch.Attrs
+		protoBatches[i] = v1.L0Batch_builder{
+			SeqNo:   proto.Int64(batch.SeqNo),
+			Version: proto.Int32(batch.Version),
+			Attrs:   batch.Attrs,
+		}.Build()
 	}
+
+	slices.SortFunc(protoBatches, func(a, b *v1.L0Batch) int {
+		return int(a.GetSeqNo()) - int(b.GetSeqNo())
+	})
 
 	return connect.NewResponse(v1.ListL0BatchesResponse_builder{
 		L0Batches: protoBatches,

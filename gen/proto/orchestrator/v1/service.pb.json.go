@@ -26,3 +26,13 @@ func (msg *ListL0BatchesResponse) MarshalJSON() ([]byte, error) {
 func (msg *ListL0BatchesResponse) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
+
+// MarshalJSON implements json.Marshaler
+func (msg *L0Batch) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *L0Batch) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}

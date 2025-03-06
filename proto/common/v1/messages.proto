@@ -14,13 +14,12 @@ message L0Batch {
         MERGED = 3;
     }
 
-    string id = 1;
-    string path = 2;
-    State state = 3;
-    google.protobuf.Timestamp created_at = 4;
+    string path = 1;
+    State state = 2;
+    google.protobuf.Timestamp created_at = 3;
 
     // Stats
-    int64 size_bytes = 5;
-    string min_key = 6;
-    string max_key = 7;
+    int64 size_bytes = 4;
+    string min_key = 5;
+    string max_key = 6;
 }
