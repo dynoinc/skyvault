@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
+	"connectrpc.com/otelconnect"
 	"github.com/earthboundkid/versioninfo/v2"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -115,6 +116,12 @@ func main() {
 	meterProvider := metric.NewMeterProvider(metric.WithReader(promExporter))
 	otel.SetMeterProvider(meterProvider)
 
+	otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithTrustRemote())
+	if err != nil {
+		slog.ErrorContext(ctx, "setting up OpenTelemetry interceptor", "error", err)
+		os.Exit(1)
+	}
+
 	// Database setup
 	db, err := database.Pool(ctx, c.DatabaseURL)
 	if err != nil {
@@ -135,7 +142,7 @@ func main() {
 	// Common interceptors for all services
 	interceptors := connect.WithInterceptors(
 		middleware.LogErrors(),
-		// Add any other global interceptors here
+		otelInterceptor,
 	)
 
 	// Create the gRPC health checker
