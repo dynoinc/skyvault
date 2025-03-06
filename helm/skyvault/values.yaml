@@ -106,7 +106,6 @@ index:
   port: 5003
   instance: "default"
   namespace: "default"
-  refreshRate: "30s"
   replicas: 2
   resources:
     requests:

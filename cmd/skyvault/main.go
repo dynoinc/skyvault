@@ -181,7 +181,7 @@ func main() {
 	}
 
 	if c.Index.Enabled {
-		indexHandler, err := index.NewHandler(ctx, c.Index, database.New(db))
+		indexHandler, err := index.NewHandler(ctx, c.Index, db)
 		if err != nil {
 			slog.ErrorContext(ctx, "setting up index", "error", err)
 			os.Exit(1)

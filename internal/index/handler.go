@@ -7,12 +7,13 @@ import (
 	"net/http"
 	"sort"
 	"sync"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/cespare/xxhash/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -27,10 +28,9 @@ import (
 type Config struct {
 	Enabled bool `default:"false"`
 
-	Namespace   string        `default:"default"`
-	Instance    string        `default:"default"`
-	CachePort   int           `default:"5002"`
-	RefreshRate time.Duration `default:"30s"`
+	Namespace string `default:"default"`
+	Instance  string `default:"default"`
+	CachePort int    `default:"5002"`
 }
 
 // hasher implements the consistent hashing interface
@@ -46,12 +46,15 @@ type handler struct {
 
 	config Config
 	ctx    context.Context
-	db     database.Querier
 
 	// Cache service ring
-	ring         *consistentRing
 	ringMu       sync.RWMutex
+	ring         *consistentRing
 	cacheClients map[string]cachev1connect.CacheServiceClient
+
+	// L0 batches
+	l0BatchesMu sync.RWMutex
+	l0Batches   []database.L0Batch
 
 	// Kubernetes client for discovering cache service pods
 	kubeClient kubernetes.Interface
@@ -112,18 +115,17 @@ func (r *consistentRing) countMembers() int {
 func NewHandler(
 	ctx context.Context,
 	cfg Config,
-	db database.Querier,
+	db *pgxpool.Pool,
 ) (*handler, error) {
 	h := &handler{
-		config:       cfg,
-		ctx:          ctx,
-		db:           db,
+		config: cfg,
+		ctx:    ctx,
+
 		ring:         newConsistentRing(),
 		cacheClients: make(map[string]cachev1connect.CacheServiceClient),
 	}
 
 	// Initialize Kubernetes client
-	var err error
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create in-cluster config: %w", err)
@@ -135,52 +137,142 @@ func NewHandler(
 	}
 
 	// Start watching for cache service pods
-	go h.watchCacheServices(ctx)
+	if err := h.watchCacheServices(ctx); err != nil {
+		return nil, fmt.Errorf("failed to watch cache services: %w", err)
+	}
+
+	// Start watching for l0_batches
+	if err := h.watchL0Batches(ctx, db); err != nil {
+		return nil, fmt.Errorf("failed to watch l0_batches: %w", err)
+	}
+
 	return h, nil
 }
 
 // watchCacheServices watches for changes in the cache service pods
-func (h *handler) watchCacheServices(ctx context.Context) {
-	wait.UntilWithContext(ctx, func(ctx context.Context) {
-		pods, err := h.kubeClient.CoreV1().Pods(h.config.Namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("app.kubernetes.io/component=cache,skyvault.io/instance=%s", h.config.Instance),
-		})
-		if err != nil {
-			slog.Error("Failed to list cache service pods", "error", err)
-			return
-		}
+func (h *handler) watchCacheServices(ctx context.Context) error {
+	watcher, err := h.kubeClient.CoreV1().Pods(h.config.Namespace).Watch(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app.kubernetes.io/component=cache,skyvault.io/instance=%s", h.config.Instance),
+		Watch:         true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to watch cache service pods: %w", err)
+	}
+	defer watcher.Stop()
 
-		// Collect all cache service endpoints
-		endpoints := make(map[string]bool)
-		for _, pod := range pods.Items {
-			if pod.Status.Phase == "Running" {
-				// Use pod IP address and configured cache service port
-				endpoint := fmt.Sprintf("%s:%d", pod.Status.PodIP, h.config.CachePort)
-				endpoints[endpoint] = true
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					slog.Error("Watch channel closed unexpectedly")
+					return
+				}
+
+				pod, ok := event.Object.(*corev1.Pod)
+				if !ok {
+					slog.Error("Received non-pod object from watch")
+					continue
+				}
+
+				h.ringMu.Lock()
+
+				switch event.Type {
+				case watch.Added, watch.Modified:
+					endpoint := fmt.Sprintf("%s:%d", pod.Status.PodIP, h.config.CachePort)
+					if pod.Status.Phase == corev1.PodRunning {
+						if _, exists := h.cacheClients[endpoint]; !exists {
+							h.addCacheServiceLocked(endpoint)
+							slog.Info("Added cache service to ring", "endpoint", endpoint, "instance", h.config.Instance)
+						}
+					} else {
+						// Remove pod if it's no longer running
+						if _, exists := h.cacheClients[endpoint]; exists {
+							h.ring.remove(member(endpoint))
+							delete(h.cacheClients, endpoint)
+							slog.Info("Removed non-running cache service from ring", "endpoint", endpoint, "instance", h.config.Instance)
+						}
+					}
+
+				case watch.Deleted:
+					endpoint := fmt.Sprintf("%s:%d", pod.Status.PodIP, h.config.CachePort)
+					if _, exists := h.cacheClients[endpoint]; exists {
+						h.ring.remove(member(endpoint))
+						delete(h.cacheClients, endpoint)
+						slog.Info("Removed cache service from ring", "endpoint", endpoint, "instance", h.config.Instance)
+					}
+				}
+
+				h.ringMu.Unlock()
 			}
 		}
+	}()
 
-		// Update the ring with the current endpoints
-		h.ringMu.Lock()
-		defer h.ringMu.Unlock()
+	return nil
+}
 
-		// Remove endpoints that no longer exist
-		for endpoint := range h.cacheClients {
-			if !endpoints[endpoint] {
-				h.ring.remove(member(endpoint))
-				delete(h.cacheClients, endpoint)
-				slog.Info("Removed cache service from ring", "endpoint", endpoint, "instance", h.config.Instance)
+// watchL0Batches watches for changes in the l0_batches
+func (h *handler) watchL0Batches(ctx context.Context, db *pgxpool.Pool) error {
+	l0Batches, err := database.New(db).GetL0Batches(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get l0_batches: %w", err)
+	}
+
+	conn, err := db.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to acquire db conn: %w", err)
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, "LISTEN new_l0_batch")
+	if err != nil {
+		return fmt.Errorf("failed to listen for notifications: %w", err)
+	}
+
+	// Sort the l0 batches by SeqNo, highest first (newest first)
+	sort.Slice(l0Batches, func(i, j int) bool {
+		return l0Batches[i].SeqNo > l0Batches[j].SeqNo
+	})
+
+	h.l0BatchesMu.Lock()
+	h.l0Batches = l0Batches
+	h.l0BatchesMu.Unlock()
+
+	go func() {
+		for {
+			notification, err := conn.Conn().WaitForNotification(ctx)
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+
+				slog.ErrorContext(ctx, "error waiting for notification", "error", err)
+				continue
 			}
-		}
 
-		// Add new endpoints
-		for endpoint := range endpoints {
-			if _, exists := h.cacheClients[endpoint]; !exists {
-				h.addCacheServiceLocked(endpoint)
-				slog.Info("Added cache service to ring", "endpoint", endpoint, "instance", h.config.Instance)
+			// Get updated l0 batches
+			l0Batches, err := database.New(db).GetL0Batches(ctx)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to get l0 batches after notification", "error", err)
+				continue
 			}
+
+			// Sort the l0 batches by SeqNo, highest first (newest first)
+			sort.Slice(l0Batches, func(i, j int) bool {
+				return l0Batches[i].SeqNo > l0Batches[j].SeqNo
+			})
+
+			h.l0BatchesMu.Lock()
+			h.l0Batches = l0Batches
+			h.l0BatchesMu.Unlock()
+
+			slog.InfoContext(ctx, "updated l0 batches from notification", "payload", notification.Payload, "count", len(l0Batches))
 		}
-	}, h.config.RefreshRate)
+	}()
+
+	return nil
 }
 
 // addCacheServiceLocked adds a cache service to the consistent hash ring (without locking)
@@ -209,16 +301,9 @@ func (h *handler) BatchGet(
 		return connect.NewResponse(&v1.BatchGetResponse{}), nil
 	}
 
-	// Get all l0 batches from the database
-	l0Batches, err := h.db.GetL0Batches(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("error retrieving l0 batches: %w", err))
-	}
-
-	// Sort batches by SeqNo, highest first (newest first)
-	sort.Slice(l0Batches, func(i, j int) bool {
-		return l0Batches[i].SeqNo > l0Batches[j].SeqNo
-	})
+	h.l0BatchesMu.RLock()
+	l0Batches := h.l0Batches
+	h.l0BatchesMu.RUnlock()
 
 	// Track which keys we've found
 	remainingKeys := make(map[string]string)
@@ -272,6 +357,7 @@ func (h *handler) BatchGet(
 				continue
 			}
 
+			var err error
 			resp, err = client.Get(ctx, cacheReq)
 			if err != nil {
 				lastErr = err
