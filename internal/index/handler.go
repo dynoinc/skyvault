@@ -158,9 +158,10 @@ func (h *handler) watchCacheServices(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to watch cache service pods: %w", err)
 	}
-	defer watcher.Stop()
 
 	go func() {
+		defer watcher.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -224,7 +225,6 @@ func (h *handler) watchL0Batches(ctx context.Context, db *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("failed to acquire db conn: %w", err)
 	}
-	defer conn.Release()
 
 	_, err = conn.Exec(ctx, "LISTEN new_l0_batch")
 	if err != nil {
@@ -241,6 +241,8 @@ func (h *handler) watchL0Batches(ctx context.Context, db *pgxpool.Pool) error {
 	h.l0BatchesMu.Unlock()
 
 	go func() {
+		defer conn.Release()
+
 		for {
 			notification, err := conn.Conn().WaitForNotification(ctx)
 			if err != nil {
