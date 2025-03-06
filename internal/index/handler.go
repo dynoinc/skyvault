@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"connectrpc.com/connect"
 	"github.com/cespare/xxhash/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/tidwall/btree"
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -19,6 +22,7 @@ import (
 
 	cachev1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	"github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/database"
@@ -53,8 +57,10 @@ type handler struct {
 	cacheClients map[string]cachev1connect.CacheServiceClient
 
 	// L0 batches
-	l0BatchesMu sync.RWMutex
-	l0Batches   []database.L0Batch
+	l0Batches atomic.Pointer[[]database.L0Batch]
+
+	// Partitions
+	partitions atomic.Pointer[btree.Map[string, *commonv1.Partition]]
 
 	// Kubernetes client for discovering cache service pods
 	kubeClient kubernetes.Interface
@@ -97,18 +103,19 @@ func (r *consistentRing) remove(member member) {
 }
 
 // locateKey finds the member responsible for a key
-func (r *consistentRing) locateKey(key []byte) (member, member) {
+func (r *consistentRing) locateKey(key []byte) []member {
 	if len(r.members) == 0 {
-		return "", ""
+		return []member{}
 	}
 	hash := r.hasher.sum64(key) % uint64(len(r.members))
 	fallbackHash := (hash + 1) % uint64(len(r.members))
-	return r.members[hash], r.members[fallbackHash]
-}
 
-// countMembers returns the number of members in the ring
-func (r *consistentRing) countMembers() int {
-	return len(r.members)
+	members := []member{r.members[hash]}
+	if r.members[fallbackHash] != r.members[hash] {
+		members = append(members, r.members[fallbackHash])
+	}
+
+	return members
 }
 
 // NewHandler creates a new index service handler
@@ -144,6 +151,11 @@ func NewHandler(
 	// Start watching for l0_batches
 	if err := h.watchL0Batches(ctx, db); err != nil {
 		return nil, fmt.Errorf("failed to watch l0_batches: %w", err)
+	}
+
+	// Start watching for partitions
+	if err := h.watchPartitions(ctx, db); err != nil {
+		return nil, fmt.Errorf("failed to watch partitions: %w", err)
 	}
 
 	return h, nil
@@ -236,9 +248,7 @@ func (h *handler) watchL0Batches(ctx context.Context, db *pgxpool.Pool) error {
 		return l0Batches[i].SeqNo > l0Batches[j].SeqNo
 	})
 
-	h.l0BatchesMu.Lock()
-	h.l0Batches = l0Batches
-	h.l0BatchesMu.Unlock()
+	h.l0Batches.Store(&l0Batches)
 
 	go func() {
 		defer conn.Release()
@@ -266,11 +276,66 @@ func (h *handler) watchL0Batches(ctx context.Context, db *pgxpool.Pool) error {
 				return l0Batches[i].SeqNo > l0Batches[j].SeqNo
 			})
 
-			h.l0BatchesMu.Lock()
-			h.l0Batches = l0Batches
-			h.l0BatchesMu.Unlock()
+			h.l0Batches.Store(&l0Batches)
 
 			slog.InfoContext(ctx, "updated l0 batches from notification", "payload", notification.Payload, "count", len(l0Batches))
+		}
+	}()
+
+	return nil
+}
+
+// watchPartitions watches for changes in the partitions
+func (h *handler) watchPartitions(ctx context.Context, db *pgxpool.Pool) error {
+	partitions, err := database.New(db).GetPartitions(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get partitions: %w", err)
+	}
+
+	conn, err := db.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to acquire db conn: %w", err)
+	}
+
+	_, err = conn.Exec(ctx, "LISTEN new_partition")
+	if err != nil {
+		return fmt.Errorf("failed to listen for notifications: %w", err)
+	}
+
+	var tree btree.Map[string, *commonv1.Partition]
+	for _, partition := range partitions {
+		tree.Set(partition.InclusiveStartKey, partition.Attrs)
+	}
+
+	h.partitions.Store(&tree)
+
+	go func() {
+		defer conn.Release()
+
+		for {
+			notification, err := conn.Conn().WaitForNotification(ctx)
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+
+				slog.ErrorContext(ctx, "error waiting for notification", "error", err)
+				continue
+			}
+
+			partitions, err := database.New(db).GetPartitions(ctx)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to get partitions after notification", "error", err)
+				continue
+			}
+
+			var tree btree.Map[string, *commonv1.Partition]
+			for _, partition := range partitions {
+				tree.Set(partition.InclusiveStartKey, partition.Attrs)
+			}
+
+			h.partitions.Store(&tree)
+			slog.InfoContext(ctx, "updated partitions from notification", "payload", notification.Payload, "count", len(partitions))
 		}
 	}()
 
@@ -293,6 +358,29 @@ func (h *handler) addCacheServiceLocked(endpoint string) {
 	h.cacheClients[endpoint] = client
 }
 
+func (h *handler) getClients(path string) ([]cachev1connect.CacheServiceClient, error) {
+	// Get the primary and fallback endpoints while holding the ring lock
+	h.ringMu.RLock()
+	defer h.ringMu.RUnlock()
+
+	members := h.ring.locateKey([]byte(path))
+	if len(members) == 0 {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("no cache service available"))
+	}
+
+	clients := make([]cachev1connect.CacheServiceClient, 0, len(members))
+	for _, member := range members {
+		client, exists := h.cacheClients[member.String()]
+		if !exists {
+			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("no cache service available"))
+		}
+
+		clients = append(clients, client)
+	}
+
+	return clients, nil
+}
+
 // Get retrieves values for requested keys by checking all l0_batches
 func (h *handler) BatchGet(
 	ctx context.Context,
@@ -303,9 +391,7 @@ func (h *handler) BatchGet(
 		return connect.NewResponse(&v1.BatchGetResponse{}), nil
 	}
 
-	h.l0BatchesMu.RLock()
-	l0Batches := h.l0Batches
-	h.l0BatchesMu.RUnlock()
+	l0Batches := *h.l0Batches.Load()
 
 	// Track which keys we've found
 	remainingKeys := make(map[string]string)
@@ -331,34 +417,19 @@ func (h *handler) BatchGet(
 		// Sort keys for deterministic order
 		sort.Strings(keysToFind)
 
-		// Get the primary and fallback endpoints while holding the ring lock
-		h.ringMu.RLock()
-		if h.ring.countMembers() == 0 {
-			h.ringMu.RUnlock()
-			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("no cache services available"))
+		clients, err := h.getClients(batch.Attrs.GetPath())
+		if err != nil {
+			return nil, err
 		}
 
-		primary, fallback := h.ring.locateKey([]byte(batch.Attrs.GetPath()))
-		primaryEndpoint := primary.String()
-		fallbackEndpoint := fallback.String()
-		h.ringMu.RUnlock()
-
-		// Try primary and fallback endpoints in order
 		cacheReq := connect.NewRequest(&cachev1.GetRequest{})
 		cacheReq.Msg.SetObjectPath(batch.Attrs.GetPath())
 		cacheReq.Msg.SetKeys(keysToFind)
 
-		endpoints := []string{primaryEndpoint, fallbackEndpoint}
-		var lastErr error
 		var resp *connect.Response[cachev1.GetResponse]
+		var lastErr error
 
-		for _, endpoint := range endpoints {
-			client, exists := h.cacheClients[endpoint]
-			if !exists {
-				lastErr = fmt.Errorf("no client for cache service: %s", endpoint)
-				continue
-			}
-
+		for _, client := range clients {
 			var err error
 			resp, err = client.Get(ctx, cacheReq)
 			if err != nil {
@@ -381,11 +452,6 @@ func (h *handler) BatchGet(
 		for i, cacheResult := range cacheResults {
 			key := keysToFind[i]
 
-			// Only process keys that we're still looking for
-			if _, needsProcessing := remainingKeys[key]; !needsProcessing {
-				continue
-			}
-
 			// Create an index result from the cache result
 			indexResult := &v1.Result{}
 
@@ -396,15 +462,108 @@ func (h *handler) BatchGet(
 				resultsByKey[key] = indexResult
 				delete(remainingKeys, key)
 			} else if cacheResult.HasDeleted() {
-				// Key has a tombstone - store it as deleted and remove from remaining
+				// Key has a tombstone - store it as not found and remove from remaining
 				// Tombstones in newer batches take precedence over older values
-				indexResult.SetDeleted(true)
+				indexResult.SetNotFound(true)
 				resultsByKey[key] = indexResult
 				delete(remainingKeys, key)
 			} else if cacheResult.HasNotFound() {
 				// Key was not found in this batch
 				// Continue searching in older batches - don't remove from remainingKeys
 				continue
+			}
+		}
+	}
+
+	if len(remainingKeys) > 0 {
+		partitions := *h.partitions.Load()
+
+		// Create requests for each group of keys in the same partition
+		reqs := make(map[string][]string)
+		for key := range remainingKeys {
+			found := false
+			partitions.Descend(key, func(pk string, pv *commonv1.Partition) bool {
+				reqs[pk] = append(reqs[pk], key)
+				found = true
+				return false
+			})
+
+			if !found {
+				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("key %q not found in any partition", key))
+			}
+		}
+
+		for pk, keys := range reqs {
+			pv, ok := partitions.Get(pk)
+			if !ok {
+				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("partition %q not found", pk))
+			}
+
+			path := pv.GetPath()
+			if path == "" {
+				// partition has not data, mark all the keys as not found
+				for _, key := range keys {
+					resultsByKey[key] = v1.Result_builder{
+						NotFound: proto.Bool(true),
+					}.Build()
+				}
+				continue
+			}
+
+			clients, err := h.getClients(path)
+			if err != nil {
+				return nil, err
+			}
+			cacheReq := connect.NewRequest(&cachev1.GetRequest{})
+			cacheReq.Msg.SetObjectPath(path)
+			cacheReq.Msg.SetKeys(keys)
+
+			var resp *connect.Response[cachev1.GetResponse]
+			var lastErr error
+
+			for _, client := range clients {
+				var err error
+				resp, err = client.Get(ctx, cacheReq)
+				if err != nil {
+					lastErr = err
+					continue
+				}
+
+				// Success
+				lastErr = nil
+				break
+			}
+
+			if lastErr != nil {
+				// Return an error since we're unable to process this batch
+				return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for path %s: %w", path, lastErr))
+			}
+
+			// Process the results
+			cacheResults := resp.Msg.GetResults()
+			for i, cacheResult := range cacheResults {
+				key := keys[i]
+
+				// Create an index result from the cache result
+				indexResult := &v1.Result{}
+
+				// Record this result based on the status
+				if cacheResult.HasFound() {
+					// Key found with a value - store it and remove from remaining
+					indexResult.SetFound(cacheResult.GetFound())
+					resultsByKey[key] = indexResult
+					delete(remainingKeys, key)
+				} else if cacheResult.HasDeleted() {
+					// Key has a tombstone - store it as not found and remove from remaining
+					// Tombstones in newer batches take precedence over older values
+					indexResult.SetNotFound(true)
+					resultsByKey[key] = indexResult
+					delete(remainingKeys, key)
+				} else if cacheResult.HasNotFound() {
+					// Key was not found in this batch
+					// Continue searching in older batches - don't remove from remainingKeys
+					continue
+				}
 			}
 		}
 	}

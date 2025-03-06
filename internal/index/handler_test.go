@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/btree"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -64,8 +65,9 @@ func TestHandler_Get(t *testing.T) {
 		kubeClient:   fakeKubeClient,
 		ring:         newConsistentRing(),
 		cacheClients: make(map[string]cachev1connect.CacheServiceClient),
-		l0Batches:    []database.L0Batch{batch1},
 	}
+	l0Batches := []database.L0Batch{batch1}
+	h.l0Batches.Store(&l0Batches)
 
 	// Create a test request
 	req := connect.NewRequest(&v1.BatchGetRequest{})
@@ -138,8 +140,9 @@ func TestValuePrecedence(t *testing.T) {
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
 			"test-cache:5002": mockCacheClient,
 		},
-		l0Batches: []database.L0Batch{batch1, batch2},
 	}
+	l0Batches := []database.L0Batch{batch1, batch2}
+	h.l0Batches.Store(&l0Batches)
 
 	// Setup request with a key to look up
 	req := connect.NewRequest(&v1.BatchGetRequest{})
@@ -237,6 +240,7 @@ func TestCacheServiceError(t *testing.T) {
 		Return(nil, assert.AnError)
 
 	// Create the handler
+
 	h := &handler{
 		config: Config{
 			Enabled: true,
@@ -250,8 +254,9 @@ func TestCacheServiceError(t *testing.T) {
 			"primary:5002":  mockCacheClient,
 			"fallback:5002": mockCacheClient,
 		},
-		l0Batches: []database.L0Batch{batch1},
 	}
+	l0Batches := []database.L0Batch{batch1}
+	h.l0Batches.Store(&l0Batches)
 
 	// Setup request
 	req := connect.NewRequest(&v1.BatchGetRequest{})
@@ -309,8 +314,8 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
 			"test-cache:5002": mockCacheClient,
 		},
-		l0Batches: batches,
 	}
+	h.l0Batches.Store(&batches)
 
 	// Setup request with keys to look up
 	req := connect.NewRequest(&v1.BatchGetRequest{})
@@ -393,9 +398,8 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	results := resp.Msg.GetResults()
 	require.Equal(t, 3, len(results))
 
-	// key1 should be marked as deleted (from newest batch3)
-	assert.True(t, results[0].HasDeleted())
-	assert.True(t, results[0].GetDeleted())
+	// key1 should be marked as not found (from newest batch3)
+	assert.True(t, results[0].HasNotFound())
 
 	// key2 should have the value from batch2
 	assert.True(t, results[1].HasFound())
@@ -404,4 +408,129 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	// key3 should have the value from batch1
 	assert.True(t, results[2].HasFound())
 	assert.Equal(t, "value3-from-batch1", string(results[2].GetFound()))
+}
+
+func TestPartitionLookup(t *testing.T) {
+	// Create a new gomock controller
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+
+	// Create mock objects
+	mockCacheClient := mocks.NewMockCacheServiceClient(ctrl)
+
+	// Setup test data: partitions with different key ranges
+	partitions := btree.Map[string, *commonv1.Partition]{}
+
+	// Partition 1: keys < "k2"
+	partition1 := commonv1.Partition_builder{
+		Path: proto.String("partition1/data"),
+	}.Build()
+	partitions.Set("", partition1) // Empty string is the start key for first partition
+
+	// Partition 2: k2 <= keys < k4
+	partition2 := commonv1.Partition_builder{
+		Path: proto.String("partition2/data"),
+	}.Build()
+	partitions.Set("k2", partition2)
+
+	// Partition 3: k4 <= keys
+	partition3 := commonv1.Partition_builder{
+		Path: proto.String("partition3/data"),
+	}.Build()
+	partitions.Set("k4", partition3)
+
+	// Create the handler
+	h := &handler{
+		config: Config{
+			Enabled: true,
+		},
+		ctx: ctx,
+		ring: &consistentRing{
+			members: []member{"test-cache:5002"},
+			hasher:  hasher{},
+		},
+		cacheClients: map[string]cachev1connect.CacheServiceClient{
+			"test-cache:5002": mockCacheClient,
+		},
+	}
+	l0Batches := []database.L0Batch{}
+	h.l0Batches.Store(&l0Batches)
+	h.partitions.Store(&partitions)
+
+	// Setup request with keys that span different partitions
+	req := connect.NewRequest(&v1.BatchGetRequest{})
+	req.Msg.SetKeys([]string{
+		"k1", // Should be served by partition1
+		"k2", // Should be served by partition2
+		"k3", // Should be served by partition2
+		"k5", // Should be served by partition3
+	})
+
+	// Setup mock responses for each partition
+
+	// Partition 1 response (k1)
+	resp1 := &cachev1.GetResponse{}
+	k1Result := &cachev1.Result{}
+	k1Result.SetFound([]byte("value1"))
+	resp1.SetResults([]*cachev1.Result{k1Result})
+
+	// Partition 2 response (k2, k3)
+	resp2 := &cachev1.GetResponse{}
+	k2Result := &cachev1.Result{}
+	k2Result.SetFound([]byte("value2"))
+	k3Result := &cachev1.Result{}
+	k3Result.SetFound([]byte("value3"))
+	resp2.SetResults([]*cachev1.Result{k2Result, k3Result})
+
+	// Partition 3 response (k5)
+	resp3 := &cachev1.GetResponse{}
+	k5Result := &cachev1.Result{}
+	k5Result.SetFound([]byte("value5"))
+	resp3.SetResults([]*cachev1.Result{k5Result})
+
+	// Setup expectations for cache client calls
+
+	mockCacheClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, req *connect.Request[cachev1.GetRequest]) (*connect.Response[cachev1.GetResponse], error) {
+			if req.Msg.GetObjectPath() == "partition1/data" {
+				assert.Equal(t, []string{"k1"}, req.Msg.GetKeys())
+				return connect.NewResponse(resp1), nil
+			} else if req.Msg.GetObjectPath() == "partition2/data" {
+				assert.Equal(t, []string{"k2", "k3"}, req.Msg.GetKeys())
+				return connect.NewResponse(resp2), nil
+			} else if req.Msg.GetObjectPath() == "partition3/data" {
+				assert.Equal(t, []string{"k5"}, req.Msg.GetKeys())
+				return connect.NewResponse(resp3), nil
+			}
+
+			return nil, assert.AnError
+		}).Times(3)
+
+	// Call the handler
+	resp, err := h.BatchGet(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Verify the response has the expected results in the correct order
+	results := resp.Msg.GetResults()
+	require.Equal(t, 4, len(results))
+
+	// k1 from partition1
+	assert.True(t, results[0].HasFound())
+	assert.Equal(t, "value1", string(results[0].GetFound()))
+
+	// k2 from partition2
+	assert.True(t, results[1].HasFound())
+	assert.Equal(t, "value2", string(results[1].GetFound()))
+
+	// k3 from partition2
+	assert.True(t, results[2].HasFound())
+	assert.Equal(t, "value3", string(results[2].GetFound()))
+
+	// k5 from partition3
+	assert.True(t, results[3].HasFound())
+	assert.Equal(t, "value5", string(results[3].GetFound()))
 }

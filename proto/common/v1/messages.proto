@@ -25,4 +25,6 @@ message L0Batch {
 }
 
 message Partition {
+  // TODO: Represent a full LSM tree with indexes here.
+  string path = 1;
 }

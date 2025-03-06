@@ -20,6 +20,5 @@ message Result {
   oneof status {
     bytes found = 1;
     bool not_found = 2;
-    bool deleted = 3;
   }
 }

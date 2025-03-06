@@ -393,8 +393,6 @@ func stressIndex(ctx context.Context, cfg config, target string, m *metrics, act
 		// Verify the result is as expected
 		if isWritten && !isDeleted {
 			return result.HasFound()
-		} else if isDeleted {
-			return result.HasDeleted()
 		} else {
 			return result.HasNotFound()
 		}
@@ -554,8 +552,6 @@ func stressIndex(ctx context.Context, cfg config, target string, m *metrics, act
 										// Determine actual result
 										if result.HasFound() {
 											resultStatus = "found"
-										} else if result.HasDeleted() {
-											resultStatus = "deleted"
 										} else if result.HasNotFound() {
 											resultStatus = "notfound"
 										}
