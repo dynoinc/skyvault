@@ -54,6 +54,18 @@ k8s-dev:
 k8s-reset:
     helm uninstall skyvault || true
 
+k8s-forward:
+    #!/usr/bin/env sh
+    # Forward ports for all services
+    trap 'kill $(jobs -p)' INT TERM
+    kubectl port-forward svc/skyvault-batcher 5001:5001 &
+    kubectl port-forward svc/skyvault-cache-default 5002:5002 &
+    kubectl port-forward svc/skyvault-index-default 5003:5003 &
+    kubectl port-forward svc/skyvault-orchestrator 5004:5004 &
+    kubectl port-forward svc/skyvault-worker 5005:5005 &
+    wait
+    
+
 k8s-logs:
     kubectl logs -f -l "app.kubernetes.io/component in (batcher,index,cache,worker,orchestrator)" --max-log-requests 1000
 
