@@ -12,7 +12,8 @@ import (
 )
 
 const addL0Batch = `-- name: AddL0Batch :exec
-INSERT INTO l0_batches (attrs) VALUES ($1)
+INSERT INTO l0_batches (attrs)
+VALUES ($1)
 `
 
 func (q *Queries) AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error {
@@ -21,9 +22,10 @@ func (q *Queries) AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error {
 }
 
 const deleteL0Batch = `-- name: DeleteL0Batch :one
-DELETE FROM l0_batches
-WHERE seq_no = $1 AND version = $2
-RETURNING seq_no, version, attrs
+DELETE
+FROM l0_batches
+WHERE seq_no = $1
+  AND version = $2 RETURNING seq_no, version, attrs
 `
 
 type DeleteL0BatchParams struct {
@@ -39,7 +41,8 @@ func (q *Queries) DeleteL0Batch(ctx context.Context, arg DeleteL0BatchParams) (L
 }
 
 const getL0Batches = `-- name: GetL0Batches :many
-SELECT seq_no, version, attrs FROM l0_batches
+SELECT seq_no, version, attrs
+FROM l0_batches
 `
 
 func (q *Queries) GetL0Batches(ctx context.Context) ([]L0Batch, error) {
@@ -63,8 +66,9 @@ func (q *Queries) GetL0Batches(ctx context.Context) ([]L0Batch, error) {
 }
 
 const getL0BatchesBySeqNo = `-- name: GetL0BatchesBySeqNo :many
-SELECT seq_no, version, attrs FROM l0_batches
-WHERE seq_no = ANY($1::bigint[])
+SELECT seq_no, version, attrs
+FROM l0_batches
+WHERE seq_no = ANY ($1::bigint[])
 `
 
 func (q *Queries) GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]L0Batch, error) {
@@ -90,8 +94,8 @@ func (q *Queries) GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) 
 const updateL0Batch = `-- name: UpdateL0Batch :one
 UPDATE l0_batches
 SET attrs = attrs || $1
-WHERE seq_no = $2 AND version = $3
-RETURNING seq_no, version, attrs
+WHERE seq_no = $2
+  AND version = $3 RETURNING seq_no, version, attrs
 `
 
 type UpdateL0BatchParams struct {
