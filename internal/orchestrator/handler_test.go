@@ -4,141 +4,96 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/database/dto"
 )
 
 func TestMergeableBatches(t *testing.T) {
+	type l0Batch struct {
+		State commonv1.L0Batch_State
+		Size  int64
+	}
+
 	tests := []struct {
 		name                 string
-		l0Batches            []database.L0Batch
+		l0Batches            []l0Batch
 		minL0Batches         int
-		maxL0Batches         int
-		maxL0MergedBatchSize int
-		wantBatchIDs         []database.L0Batch
+		minL0MergedBatchSize int
+		wantBatchIDs         []int64
 		wantTotalSize        int64
 	}{
 		{
-			name: "fewer batches than min",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 2000}},
-			},
-			minL0Batches:         3,
-			maxL0Batches:         5,
-			maxL0MergedBatchSize: 10000,
-			wantBatchIDs:         nil,
-			wantTotalSize:        0,
-		},
-		{
 			name: "all batches locked",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateMerging, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateMerging, Path: "batch2", SizeBytes: 2000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateMerging, Path: "batch3", SizeBytes: 3000}},
+			l0Batches: []l0Batch{
+				{State: commonv1.L0Batch_MERGING, Size: 1000},
+				{State: commonv1.L0Batch_MERGING, Size: 2000},
+				{State: commonv1.L0Batch_MERGING, Size: 3000},
 			},
 			minL0Batches:         1,
-			maxL0Batches:         3,
-			maxL0MergedBatchSize: 10000,
+			minL0MergedBatchSize: 10000,
 			wantBatchIDs:         nil,
 			wantTotalSize:        0,
 		},
 		{
-			name: "some batches locked at beginning",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateMerging, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateMerging, Path: "batch2", SizeBytes: 2000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 3000}},
-				{SeqNo: 4, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch4", SizeBytes: 4000}},
-				{SeqNo: 5, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch5", SizeBytes: 5000}},
+			name: "fewer batches than min",
+			l0Batches: []l0Batch{
+				{State: commonv1.L0Batch_NEW, Size: 1000},
+				{State: commonv1.L0Batch_NEW, Size: 2000},
 			},
-			minL0Batches:         2,
-			maxL0Batches:         2,
-			maxL0MergedBatchSize: 20000,
-			wantBatchIDs: []database.L0Batch{
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 3000}},
-				{SeqNo: 4, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch4", SizeBytes: 4000}},
-				{SeqNo: 5, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch5", SizeBytes: 5000}},
-			},
-			wantTotalSize: 12000,
-		},
-		{
-			name: "batches need to be sorted",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 5, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch5", SizeBytes: 5000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 3000}},
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 4, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch4", SizeBytes: 4000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 2000}},
-			},
-			minL0Batches:         2,
-			maxL0Batches:         2,
-			maxL0MergedBatchSize: 20000,
-			wantBatchIDs: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 2000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 3000}},
-				{SeqNo: 4, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch4", SizeBytes: 4000}},
-				{SeqNo: 5, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch5", SizeBytes: 5000}},
-			},
-			wantTotalSize: 15000,
-		},
-		{
-			name: "exceed max batches but under size limit",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 1000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 1000}},
-				{SeqNo: 4, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch4", SizeBytes: 1000}},
-			},
-			minL0Batches:         2,
-			maxL0Batches:         2,
-			maxL0MergedBatchSize: 10000,
-			wantBatchIDs: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 1000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 1000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 1000}},
-				{SeqNo: 4, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch4", SizeBytes: 1000}},
-			},
-			wantTotalSize: 4000,
-		},
-		{
-			name: "exceed size limit but under max batches",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 4000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 4000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 4000}},
-			},
-			minL0Batches:         2,
-			maxL0Batches:         4,
-			maxL0MergedBatchSize: 10000,
-			wantBatchIDs: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 4000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 4000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 4000}},
-			},
-			wantTotalSize: 12000,
-		},
-		{
-			name: "exactly_at_max_batch_size",
-			l0Batches: []database.L0Batch{
-				{SeqNo: 1, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch1", SizeBytes: 5000}},
-				{SeqNo: 2, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch2", SizeBytes: 5000}},
-				{SeqNo: 3, Attrs: dto.L0BatchAttrs{State: dto.StateCommitted, Path: "batch3", SizeBytes: 5000}},
-			},
-			minL0Batches:         2,
-			maxL0Batches:         4,
-			maxL0MergedBatchSize: 15000,
+			minL0Batches:         3,
+			minL0MergedBatchSize: 10000,
 			wantBatchIDs:         nil,
 			wantTotalSize:        0,
+		},
+		{
+			name: "exceeds minL0Batches",
+			l0Batches: []l0Batch{
+				{State: commonv1.L0Batch_MERGING, Size: 1000},
+				{State: commonv1.L0Batch_MERGING, Size: 2000},
+				{State: commonv1.L0Batch_NEW, Size: 3000},
+				{State: commonv1.L0Batch_NEW, Size: 4000},
+				{State: commonv1.L0Batch_NEW, Size: 5000},
+			},
+			minL0Batches:         2,
+			minL0MergedBatchSize: 20000,
+			wantBatchIDs:         []int64{3, 4, 5},
+			wantTotalSize:        12000,
+		},
+		{
+			name: "exceeds minL0MergedBatchSize",
+			l0Batches: []l0Batch{
+				{State: commonv1.L0Batch_NEW, Size: 1000},
+				{State: commonv1.L0Batch_NEW, Size: 2000},
+			},
+			minL0Batches:         5,
+			minL0MergedBatchSize: 2000,
+			wantBatchIDs:         []int64{1, 2},
+			wantTotalSize:        3000,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBatchIDs, gotTotalSize := mergeableBatches(tt.l0Batches, tt.minL0Batches, tt.maxL0Batches, tt.maxL0MergedBatchSize)
-			assert.Equal(t, tt.wantBatchIDs, gotBatchIDs)
+			l0Batches := make([]database.L0Batch, len(tt.l0Batches))
+			for i, batch := range tt.l0Batches {
+				l0Batches[i] = database.L0Batch{
+					SeqNo: int64(i + 1),
+					Attrs: commonv1.L0Batch_builder{
+						State:     batch.State.Enum(),
+						SizeBytes: proto.Int64(batch.Size),
+					}.Build(),
+				}
+			}
+
+			gotBatches, gotTotalSize := mergeableBatches(l0Batches, tt.minL0Batches, tt.minL0MergedBatchSize)
+			gotBatchIDs := make([]int64, len(gotBatches))
+			for i, batch := range gotBatches {
+				gotBatchIDs[i] = batch.SeqNo
+			}
+
+			assert.ElementsMatch(t, tt.wantBatchIDs, gotBatchIDs)
 			assert.Equal(t, tt.wantTotalSize, gotTotalSize)
 		})
 	}

@@ -8,13 +8,15 @@ import (
 	"connectrpc.com/connect"
 	cachev1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -63,9 +65,9 @@ func TestHandler_Get(t *testing.T) {
 		GetL0Batches(gomock.Any()).
 		Return([]database.L0Batch{
 			{
-				Attrs: dto.L0BatchAttrs{
-					Path: "batch-1",
-				},
+				Attrs: commonv1.L0Batch_builder{
+					Path: proto.String("batch-1"),
+				}.Build(),
 			},
 		}, nil)
 
@@ -116,16 +118,16 @@ func TestValuePrecedence(t *testing.T) {
 	// Setup test data: 2 l0 batches with timestamps in descending order
 	now := time.Now()
 	batch1 := database.L0Batch{
-		Attrs: dto.L0BatchAttrs{
-			Path:      "batch1",
-			CreatedAt: now,
-		},
+		Attrs: commonv1.L0Batch_builder{
+			Path:      proto.String("batch1"),
+			CreatedAt: timestamppb.New(now),
+		}.Build(),
 	}
 	batch2 := database.L0Batch{
-		Attrs: dto.L0BatchAttrs{
-			Path:      "batch2",
-			CreatedAt: now.Add(-1 * time.Hour),
-		},
+		Attrs: commonv1.L0Batch_builder{
+			Path:      proto.String("batch2"),
+			CreatedAt: timestamppb.New(now.Add(-1 * time.Hour)),
+		}.Build(),
 	}
 
 	// Setup database mock to return our batches
@@ -271,10 +273,10 @@ func TestCacheServiceError(t *testing.T) {
 	// Setup test data
 	now := time.Now()
 	batch1 := database.L0Batch{
-		Attrs: dto.L0BatchAttrs{
-			Path:      "batch1",
-			CreatedAt: now,
-		},
+		Attrs: commonv1.L0Batch_builder{
+			Path:      proto.String("batch1"),
+			CreatedAt: timestamppb.New(now),
+		}.Build(),
 	}
 
 	// Setup database mock
@@ -336,19 +338,19 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	// Batch 3 is newest, Batch 1 is oldest
 	batches := []database.L0Batch{
 		{
-			Attrs: dto.L0BatchAttrs{
-				Path: "l0_batches/batch3",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("l0_batches/batch3"),
+			}.Build(),
 		},
 		{
-			Attrs: dto.L0BatchAttrs{
-				Path: "l0_batches/batch2",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("l0_batches/batch2"),
+			}.Build(),
 		},
 		{
-			Attrs: dto.L0BatchAttrs{
-				Path: "l0_batches/batch1",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("l0_batches/batch1"),
+			}.Build(),
 		},
 	}
 

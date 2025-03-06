@@ -1,0 +1,26 @@
+edition = "2023";
+
+package common.v1;
+
+option go_package = "github.com/dynoinc/skyvault/gen/proto/common/v1";
+
+import "google/protobuf/timestamp.proto";
+
+message L0Batch {
+    enum State {
+        UNSPECIFIED = 0;
+        NEW = 1;
+        MERGING = 2;
+        MERGED = 3;
+    }
+
+    string id = 1;
+    string path = 2;
+    State state = 3;
+    google.protobuf.Timestamp created_at = 4;
+
+    // Stats
+    int64 size_bytes = 5;
+    string min_key = 6;
+    string max_key = 7;
+}

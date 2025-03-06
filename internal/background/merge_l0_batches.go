@@ -13,7 +13,6 @@ import (
 	"sort"
 
 	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/recordio"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,6 +20,9 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/protobuf/proto"
+
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
 type MergeL0BatchesArgs struct {
@@ -54,7 +56,7 @@ func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0B
 	// read all the objects from the L0 batches
 	objs := make([][]byte, len(job.Args.Batches))
 	for i, batch := range job.Args.Batches {
-		obj, err := w.objstore.Get(ctx, batch.Attrs.Path)
+		obj, err := w.objstore.Get(ctx, batch.Attrs.GetPath())
 		if err != nil {
 			return fmt.Errorf("getting object: %w", err)
 		}
@@ -115,13 +117,13 @@ func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0B
 	if _, err := qtx.UpdateL0Batch(ctx, database.UpdateL0BatchParams{
 		SeqNo:   batchToUpdate.SeqNo,
 		Version: batchToUpdate.Version,
-		Attrs: dto.L0BatchAttrs{
-			State:     dto.StateMerged,
-			Path:      objPath,
-			SizeBytes: sizeBytes,
-			MinKey:    minKey,
-			MaxKey:    maxKey,
-		},
+		Attrs: commonv1.L0Batch_builder{
+			State:     commonv1.L0Batch_MERGED.Enum(),
+			Path:      proto.String(objPath),
+			SizeBytes: proto.Int64(sizeBytes),
+			MinKey:    proto.String(minKey),
+			MaxKey:    proto.String(maxKey),
+		}.Build(),
 	}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			slog.WarnContext(ctx, "concurrent update, no-oping merge", "seqNo", batchToUpdate.SeqNo, "version", batchToUpdate.Version)

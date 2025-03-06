@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
+	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	database "github.com/dynoinc/skyvault/internal/database"
-	dto "github.com/dynoinc/skyvault/internal/database/dto"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,7 +43,7 @@ func (m *MockQuerier) EXPECT() *MockQuerierMockRecorder {
 }
 
 // AddL0Batch mocks base method.
-func (m *MockQuerier) AddL0Batch(ctx context.Context, attrs dto.L0BatchAttrs) error {
+func (m *MockQuerier) AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddL0Batch", ctx, attrs)
 	ret0, _ := ret[0].(error)

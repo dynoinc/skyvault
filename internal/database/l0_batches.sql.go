@@ -8,14 +8,14 @@ package database
 import (
 	"context"
 
-	dto "github.com/dynoinc/skyvault/internal/database/dto"
+	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
 const addL0Batch = `-- name: AddL0Batch :exec
 INSERT INTO l0_batches (attrs) VALUES ($1)
 `
 
-func (q *Queries) AddL0Batch(ctx context.Context, attrs dto.L0BatchAttrs) error {
+func (q *Queries) AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error {
 	_, err := q.db.Exec(ctx, addL0Batch, attrs)
 	return err
 }
@@ -95,7 +95,7 @@ RETURNING seq_no, version, attrs
 `
 
 type UpdateL0BatchParams struct {
-	Attrs   dto.L0BatchAttrs
+	Attrs   *v1.L0Batch
 	SeqNo   int64
 	Version int32
 }

@@ -4,5 +4,15 @@ package orchestrator.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1";
 
+import "proto/common/v1/messages.proto";
+
 service OrchestratorService {
+    rpc ListL0Batches(ListL0BatchesRequest) returns (ListL0BatchesResponse);
+}
+
+message ListL0BatchesRequest {
+}
+
+message ListL0BatchesResponse {
+    repeated common.v1.L0Batch l0_batches = 1;
 }

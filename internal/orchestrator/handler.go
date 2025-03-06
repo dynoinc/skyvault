@@ -8,10 +8,12 @@ import (
 	"sort"
 	"time"
 
+	"connectrpc.com/connect"
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
+	v1 "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1"
 	v1connect "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/background"
 	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -21,9 +23,8 @@ import (
 // Config holds the configuration for the orchestrator service
 type Config struct {
 	Enabled              bool `default:"false"`
-	MinL0Batches         int  `default:"4"`        // number of batches we are ok with in L0 level.
-	MaxL0Batches         int  `default:"16"`       // number of batches beyond which we merge even if target size is not met.
-	MaxL0MergedBatchSize int  `default:"67108864"` // number of bytes we try to limit merged batch size to.
+	MinL0Batches         int  `default:"16"`       // minimum number of batches beyond which we merge.
+	MinL0MergedBatchSize int  `default:"16777216"` // minimum size of merged batch.
 }
 
 // handler implements the OrchestratorService
@@ -65,42 +66,36 @@ func NewHandler(
 	return h, nil
 }
 
-func mergeableBatches(l0Batches []database.L0Batch, minL0Batches int, maxL0Batches int, maxL0MergedBatchSize int) ([]database.L0Batch, int64) {
+func mergeableBatches(l0Batches []database.L0Batch, minL0Batches int, minL0MergedBatchSize int) ([]database.L0Batch, int64) {
 	// Sort batches by SeqNo (ascending)
 	sort.Slice(l0Batches, func(i, j int) bool {
 		return l0Batches[i].SeqNo < l0Batches[j].SeqNo
 	})
 
-	for len(l0Batches) > 0 && l0Batches[0].Attrs.State != dto.StateCommitted {
+	for len(l0Batches) > 0 && l0Batches[0].Attrs.GetState() != commonv1.L0Batch_NEW {
 		l0Batches = l0Batches[1:]
-	}
-
-	// If we have fewer than minL0Batches, nothing to do.
-	if len(l0Batches) <= minL0Batches {
-		return nil, 0
 	}
 
 	var batchesToMerge []database.L0Batch
 	var totalSize int64
-	for len(l0Batches) > 0 && totalSize < int64(maxL0MergedBatchSize) {
+	for len(l0Batches) > 0 && totalSize < int64(minL0MergedBatchSize) {
 		batchesToMerge = append(batchesToMerge, l0Batches[0])
-		totalSize += l0Batches[0].Attrs.SizeBytes
+		totalSize += l0Batches[0].Attrs.GetSizeBytes()
 		l0Batches = l0Batches[1:]
 	}
 
-	if len(batchesToMerge) > maxL0Batches || totalSize > int64(maxL0MergedBatchSize) {
-		return batchesToMerge, totalSize
+	if len(batchesToMerge) < minL0Batches && totalSize < int64(minL0MergedBatchSize) {
+		return nil, 0
 	}
 
-	return nil, 0
+	return batchesToMerge, totalSize
 }
 
 func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 	batchesToMerge, totalSize := mergeableBatches(
 		l0Batches,
 		h.config.MinL0Batches,
-		h.config.MaxL0Batches,
-		h.config.MaxL0MergedBatchSize,
+		h.config.MinL0MergedBatchSize,
 	)
 	if batchesToMerge == nil {
 		return nil
@@ -119,7 +114,7 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 		_, err := qtx.UpdateL0Batch(h.ctx, database.UpdateL0BatchParams{
 			SeqNo:   batch.SeqNo,
 			Version: batch.Version,
-			Attrs:   dto.L0BatchAttrs{State: dto.StateMerging},
+			Attrs:   commonv1.L0Batch_builder{State: commonv1.L0Batch_MERGING.Enum()}.Build(),
 		})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -162,4 +157,20 @@ func (h *handler) processLoop() {
 		case <-h.ctx.Done():
 		}
 	}
+}
+
+func (h *handler) ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error) {
+	l0Batches, err := database.New(h.db).GetL0Batches(h.ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get L0 batches: %w", err))
+	}
+
+	protoBatches := make([]*commonv1.L0Batch, len(l0Batches))
+	for i, batch := range l0Batches {
+		protoBatches[i] = batch.Attrs
+	}
+
+	return connect.NewResponse(v1.ListL0BatchesResponse_builder{
+		L0Batches: protoBatches,
+	}.Build()), nil
 }

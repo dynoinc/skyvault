@@ -7,11 +7,11 @@ package database
 import (
 	"context"
 
-	dto "github.com/dynoinc/skyvault/internal/database/dto"
+	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
 type Querier interface {
-	AddL0Batch(ctx context.Context, attrs dto.L0BatchAttrs) error
+	AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error
 	DeleteL0Batch(ctx context.Context, arg DeleteL0BatchParams) (L0Batch, error)
 	GetL0Batches(ctx context.Context) ([]L0Batch, error)
 	GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]L0Batch, error)

@@ -5,11 +5,11 @@
 package database
 
 import (
-	dto "github.com/dynoinc/skyvault/internal/database/dto"
+	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
 type L0Batch struct {
 	SeqNo   int64
 	Version int32
-	Attrs   dto.L0BatchAttrs
+	Attrs   *v1.L0Batch
 }

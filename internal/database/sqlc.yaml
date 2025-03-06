@@ -16,6 +16,7 @@ sql:
         overrides:
           - column: "l0_batches.attrs"
             go_type: 
-              import: "github.com/dynoinc/skyvault/internal/database/dto"
-              package: "dto"
-              type: "L0BatchAttrs"
+              import: "github.com/dynoinc/skyvault/gen/proto/common/v1"
+              package: "v1"
+              type: "L0Batch"
+              pointer: true

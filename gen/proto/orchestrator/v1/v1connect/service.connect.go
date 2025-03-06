@@ -6,8 +6,11 @@ package v1connect
 
 import (
 	connect "connectrpc.com/connect"
-	_ "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1"
+	context "context"
+	errors "errors"
+	v1 "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1"
 	http "net/http"
+	strings "strings"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are
@@ -22,8 +25,22 @@ const (
 	OrchestratorServiceName = "orchestrator.v1.OrchestratorService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// OrchestratorServiceListL0BatchesProcedure is the fully-qualified name of the
+	// OrchestratorService's ListL0Batches RPC.
+	OrchestratorServiceListL0BatchesProcedure = "/orchestrator.v1.OrchestratorService/ListL0Batches"
+)
+
 // OrchestratorServiceClient is a client for the orchestrator.v1.OrchestratorService service.
 type OrchestratorServiceClient interface {
+	ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error)
 }
 
 // NewOrchestratorServiceClient constructs a client for the orchestrator.v1.OrchestratorService
@@ -34,16 +51,32 @@ type OrchestratorServiceClient interface {
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
 func NewOrchestratorServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) OrchestratorServiceClient {
-	return &orchestratorServiceClient{}
+	baseURL = strings.TrimRight(baseURL, "/")
+	orchestratorServiceMethods := v1.File_proto_orchestrator_v1_service_proto.Services().ByName("OrchestratorService").Methods()
+	return &orchestratorServiceClient{
+		listL0Batches: connect.NewClient[v1.ListL0BatchesRequest, v1.ListL0BatchesResponse](
+			httpClient,
+			baseURL+OrchestratorServiceListL0BatchesProcedure,
+			connect.WithSchema(orchestratorServiceMethods.ByName("ListL0Batches")),
+			connect.WithClientOptions(opts...),
+		),
+	}
 }
 
 // orchestratorServiceClient implements OrchestratorServiceClient.
 type orchestratorServiceClient struct {
+	listL0Batches *connect.Client[v1.ListL0BatchesRequest, v1.ListL0BatchesResponse]
+}
+
+// ListL0Batches calls orchestrator.v1.OrchestratorService.ListL0Batches.
+func (c *orchestratorServiceClient) ListL0Batches(ctx context.Context, req *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error) {
+	return c.listL0Batches.CallUnary(ctx, req)
 }
 
 // OrchestratorServiceHandler is an implementation of the orchestrator.v1.OrchestratorService
 // service.
 type OrchestratorServiceHandler interface {
+	ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error)
 }
 
 // NewOrchestratorServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -52,8 +85,17 @@ type OrchestratorServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewOrchestratorServiceHandler(svc OrchestratorServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	orchestratorServiceMethods := v1.File_proto_orchestrator_v1_service_proto.Services().ByName("OrchestratorService").Methods()
+	orchestratorServiceListL0BatchesHandler := connect.NewUnaryHandler(
+		OrchestratorServiceListL0BatchesProcedure,
+		svc.ListL0Batches,
+		connect.WithSchema(orchestratorServiceMethods.ByName("ListL0Batches")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/orchestrator.v1.OrchestratorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case OrchestratorServiceListL0BatchesProcedure:
+			orchestratorServiceListL0BatchesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -62,3 +104,7 @@ func NewOrchestratorServiceHandler(svc OrchestratorServiceHandler, opts ...conne
 
 // UnimplementedOrchestratorServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedOrchestratorServiceHandler struct{}
+
+func (UnimplementedOrchestratorServiceHandler) ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("orchestrator.v1.OrchestratorService.ListL0Batches is not implemented"))
+}

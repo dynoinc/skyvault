@@ -6,13 +6,14 @@ import (
 
 	"connectrpc.com/connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/database/dto"
 	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/dynoinc/skyvault/internal/storage"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 )
 
 func newTestHandler(t *testing.T) (*handler, *mocks.MockQuerier, objstore.Bucket) {
@@ -65,9 +66,9 @@ func TestSingleWrite(t *testing.T) {
 	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{
 		{
 			SeqNo: 1,
-			Attrs: dto.L0BatchAttrs{
-				Path: "some/path",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("some/path"),
+			}.Build(),
 		},
 	}, nil)
 
@@ -109,15 +110,15 @@ func TestBatchBySize(t *testing.T) {
 	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
 		{
 			SeqNo: 1,
-			Attrs: dto.L0BatchAttrs{
-				Path: "some/path",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("some/path"),
+			}.Build(),
 		},
 		{
 			SeqNo: 2,
-			Attrs: dto.L0BatchAttrs{
-				Path: "another/path",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("another/path"),
+			}.Build(),
 		},
 	}, nil)
 
@@ -173,9 +174,9 @@ func TestGracefulShutdown(t *testing.T) {
 	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
 		{
 			SeqNo: 1,
-			Attrs: dto.L0BatchAttrs{
-				Path: "some/path",
-			},
+			Attrs: commonv1.L0Batch_builder{
+				Path: proto.String("some/path"),
+			}.Build(),
 		},
 	}, nil)
 
