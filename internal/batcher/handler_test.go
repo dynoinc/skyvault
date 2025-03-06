@@ -5,15 +5,16 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
+	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/dynoinc/skyvault/internal/storage"
-	"github.com/stretchr/testify/require"
-	"github.com/thanos-io/objstore"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
 )
 
 func newTestHandler(t *testing.T) (*handler, *mocks.MockQuerier, objstore.Bucket) {
@@ -201,6 +202,6 @@ func TestGracefulShutdown(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, batches, 1)
 
-	err = handler.Shutdown(ctx)
+	err = handler.shutdown(ctx)
 	require.NoError(t, err)
 }

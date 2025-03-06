@@ -5,6 +5,6 @@ metadata:
   labels:
     {{- include "skyvault.labels" . | nindent 4 }}
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "watch", "list"] 
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]

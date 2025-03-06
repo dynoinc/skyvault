@@ -4,23 +4,23 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sort"
 	"sync"
 	"time"
 
-	"net/http"
-
 	"connectrpc.com/connect"
 	"github.com/cespare/xxhash/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
 	cachev1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	"github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/database"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 // Config holds the configuration for the index service
@@ -36,7 +36,7 @@ type Config struct {
 // hasher implements the consistent hashing interface
 type hasher struct{}
 
-func (h hasher) Sum64(data []byte) uint64 {
+func (h hasher) sum64(data []byte) uint64 {
 	return xxhash.Sum64(data)
 }
 
@@ -57,34 +57,34 @@ type handler struct {
 	kubeClient kubernetes.Interface
 }
 
-// Member represents a node in the consistent hash ring
-type Member string
+// member represents a node in the consistent hash ring
+type member string
 
-func (m Member) String() string {
+func (m member) String() string {
 	return string(m)
 }
 
 // consistentRing is a simplified interface for consistent hashing
 type consistentRing struct {
-	members []Member
+	members []member
 	hasher  hasher
 }
 
-// NewConsistentRing creates a new consistent hash ring
-func NewConsistentRing() *consistentRing {
+// newConsistentRing creates a new consistent hash ring
+func newConsistentRing() *consistentRing {
 	return &consistentRing{
-		members: []Member{},
+		members: []member{},
 		hasher:  hasher{},
 	}
 }
 
-// Add adds a member to the ring
-func (r *consistentRing) Add(member Member) {
+// add adds a member to the ring
+func (r *consistentRing) add(member member) {
 	r.members = append(r.members, member)
 }
 
-// Remove removes a member from the ring
-func (r *consistentRing) Remove(member Member) {
+// remove removes a member from the ring
+func (r *consistentRing) remove(member member) {
 	for i, m := range r.members {
 		if m == member {
 			r.members = append(r.members[:i], r.members[i+1:]...)
@@ -93,18 +93,18 @@ func (r *consistentRing) Remove(member Member) {
 	}
 }
 
-// LocateKey finds the member responsible for a key
-func (r *consistentRing) LocateKey(key []byte) (Member, Member) {
+// locateKey finds the member responsible for a key
+func (r *consistentRing) locateKey(key []byte) (member, member) {
 	if len(r.members) == 0 {
 		return "", ""
 	}
-	hash := r.hasher.Sum64(key) % uint64(len(r.members))
+	hash := r.hasher.sum64(key) % uint64(len(r.members))
 	fallbackHash := (hash + 1) % uint64(len(r.members))
 	return r.members[hash], r.members[fallbackHash]
 }
 
-// CountMembers returns the number of members in the ring
-func (r *consistentRing) CountMembers() int {
+// countMembers returns the number of members in the ring
+func (r *consistentRing) countMembers() int {
 	return len(r.members)
 }
 
@@ -118,7 +118,7 @@ func NewHandler(
 		config:       cfg,
 		ctx:          ctx,
 		db:           db,
-		ring:         NewConsistentRing(),
+		ring:         newConsistentRing(),
 		cacheClients: make(map[string]cachev1connect.CacheServiceClient),
 	}
 
@@ -167,7 +167,7 @@ func (h *handler) watchCacheServices(ctx context.Context) {
 		// Remove endpoints that no longer exist
 		for endpoint := range h.cacheClients {
 			if !endpoints[endpoint] {
-				h.ring.Remove(Member(endpoint))
+				h.ring.remove(member(endpoint))
 				delete(h.cacheClients, endpoint)
 				slog.Info("Removed cache service from ring", "endpoint", endpoint, "instance", h.config.Instance)
 			}
@@ -186,7 +186,7 @@ func (h *handler) watchCacheServices(ctx context.Context) {
 // addCacheServiceLocked adds a cache service to the consistent hash ring (without locking)
 func (h *handler) addCacheServiceLocked(endpoint string) {
 	// Add to the ring
-	h.ring.Add(Member(endpoint))
+	h.ring.add(member(endpoint))
 
 	// Create a client for this endpoint
 	baseURL := fmt.Sprintf("http://%s", endpoint)
@@ -246,12 +246,12 @@ func (h *handler) BatchGet(
 
 		// Get the primary and fallback endpoints while holding the ring lock
 		h.ringMu.RLock()
-		if h.ring.CountMembers() == 0 {
+		if h.ring.countMembers() == 0 {
 			h.ringMu.RUnlock()
 			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("no cache services available"))
 		}
 
-		primary, fallback := h.ring.LocateKey([]byte(batch.Attrs.GetPath()))
+		primary, fallback := h.ring.locateKey([]byte(batch.Attrs.GetPath()))
 		primaryEndpoint := primary.String()
 		fallbackEndpoint := fallback.String()
 		h.ringMu.RUnlock()

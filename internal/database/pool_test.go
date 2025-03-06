@@ -4,13 +4,14 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
 func TestPool(t *testing.T) {

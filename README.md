@@ -2,9 +2,8 @@
 
 [![build](https://github.com/dynoinc/skyvault/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/dynoinc/skyvault/actions/workflows/build.yml)
 
-SkyVault is a high-performance, scalable object-store backed key-value store designed for efficient data management and retrieval.
-
-
+SkyVault is a high-performance, scalable object-store backed key-value store designed for efficient data management and
+retrieval.
 
 ### Key Components
 
@@ -21,16 +20,16 @@ SkyVault's architecture is designed for high scalability and performance:
 
 ## Technologies Used
 
-| Technology | Description |
-|------------|-------------|
-| [Connect](https://connectrpc.com/) | Type-safe APIs with Protobuf and gRPC |
-| [PostgreSQL](https://www.postgresql.org/) | Relational database (via [pgx](https://github.com/jackc/pgx)) |
-| [MinIO](https://min.io/) | S3-compatible object storage |
-| [Prometheus](https://prometheus.io/) | Monitoring and metrics |
-| [River](https://github.com/riverqueue/river) | Background job processing |
-| [Kubernetes](https://kubernetes.io/) | Container orchestration platform |
-| [Helm](https://helm.sh/) | Package manager for Kubernetes |
-| [Podman](https://podman.io/) | Daemonless container engine |
+| Technology                                   | Description                                                   |
+|----------------------------------------------|---------------------------------------------------------------|
+| [Connect](https://connectrpc.com/)           | Type-safe APIs with Protobuf and gRPC                         |
+| [PostgreSQL](https://www.postgresql.org/)    | Relational database (via [pgx](https://github.com/jackc/pgx)) |
+| [MinIO](https://min.io/)                     | S3-compatible object storage                                  |
+| [Prometheus](https://prometheus.io/)         | Monitoring and metrics                                        |
+| [River](https://github.com/riverqueue/river) | Background job processing                                     |
+| [Kubernetes](https://kubernetes.io/)         | Container orchestration platform                              |
+| [Helm](https://helm.sh/)                     | Package manager for Kubernetes                                |
+| [Podman](https://podman.io/)                 | Daemonless container engine                                   |
 
 ## Development
 

@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
-	"github.com/dynoinc/skyvault/internal/recordio"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
+
+	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
+	"github.com/dynoinc/skyvault/internal/recordio"
 )
 
 func TestHandler_Get(t *testing.T) {

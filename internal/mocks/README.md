@@ -1,6 +1,7 @@
 # Mocks for Testing
 
-This directory contains mock implementations of interfaces used in the SkyVault project, generated using [go.uber.org/mock](https://github.com/uber-go/mock).
+This directory contains mock implementations of interfaces used in the SkyVault project, generated
+using [go.uber.org/mock](https://github.com/uber-go/mock).
 
 ## Available Mocks
 
@@ -14,33 +15,33 @@ Here's a simple example of how to use these mocks in your tests:
 
 ```go
 import (
-	"context"
-	"testing"
-	
-	"github.com/dynoinc/skyvault/internal/mocks"
-	"go.uber.org/mock/gomock"
+"context"
+"testing"
+
+"github.com/dynoinc/skyvault/internal/mocks"
+"go.uber.org/mock/gomock"
 )
 
 func TestMyFunction(t *testing.T) {
-	// Create a new controller
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	
-	// Create a mock database
-	mockDB := mocks.NewMockQuerier(ctrl)
-	
-	// Set expectations
-	mockDB.EXPECT().
-		GetAllL0Batches(gomock.Any()).
-		Return([]database.L0Batch{
-			{
-				ID:   1,
-				Path: "batch-1",
-			},
-		}, nil)
-		
-	// Use the mock in your code
-	// ...
+// Create a new controller
+ctrl := gomock.NewController(t)
+defer ctrl.Finish()
+
+// Create a mock database
+mockDB := mocks.NewMockQuerier(ctrl)
+
+// Set expectations
+mockDB.EXPECT().
+GetAllL0Batches(gomock.Any()).
+Return([]database.L0Batch{
+{
+ID:   1,
+Path: "batch-1",
+},
+}, nil)
+
+// Use the mock in your code
+// ...
 }
 ```
 
@@ -61,7 +62,7 @@ go generate ./internal/mocks/generate.go
 Mock generation commands are stored as `//go:generate` directives in:
 
 1. The source files that define the interfaces (for our own interfaces)
-2. The `generate.go` file in the mocks directory (for all interfaces in one place) 
+2. The `generate.go` file in the mocks directory (for all interfaces in one place)
 3. Separate mock-specific files for external packages
 
 ### Adding a New Mock
@@ -72,6 +73,7 @@ To add a new interface mock:
 2. Run `go generate ./internal/mocks/generate.go`
 
 Example directive:
+
 ```go
 //go:generate go tool mockgen -destination=mock_myinterface.go -package=mocks github.com/dynoinc/skyvault/internal/mypackage MyInterface
 ```

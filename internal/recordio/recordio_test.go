@@ -10,7 +10,7 @@ import (
 
 func TestVersionEncoding(t *testing.T) {
 	// Create an empty record set
-	records := []Record{}
+	var records []Record
 	data := WriteRecords(slices.Values(records))
 
 	// Even with no records, we should have a version

@@ -20,7 +20,7 @@ spec:
       containers:
         - name: mc
           image: minio/mc
-          command: ["/bin/sh", "-c"]
+          command: [ "/bin/sh", "-c" ]
           args:
             - |
               mc alias set myminio {{ .Values.storage.s3.endpoint }} {{ .Values.storage.s3.access_key }} {{ .Values.storage.s3.secret_key }};

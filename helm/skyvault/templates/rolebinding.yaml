@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "skyvault.labels" . | nindent 4 }}
 subjects:
-- kind: ServiceAccount
-  name: {{ include "skyvault.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  - kind: ServiceAccount
+    name: {{ include "skyvault.fullname" . }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
   name: {{ include "skyvault.fullname" . }}-pod-reader

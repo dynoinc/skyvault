@@ -13,8 +13,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/recordio"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lithammer/shortuuid/v4"
@@ -23,6 +21,9 @@ import (
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/recordio"
 
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )

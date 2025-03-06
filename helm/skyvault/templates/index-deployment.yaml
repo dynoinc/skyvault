@@ -30,7 +30,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["/skyvault", "--debug"]
+          command: [ "/skyvault", "--debug" ]
           ports:
             - containerPort: {{ .Values.index.port }}
               protocol: TCP

@@ -11,15 +11,16 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/lithammer/shortuuid/v4"
+	"github.com/thanos-io/objstore"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	"github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/recordio"
-	"github.com/lithammer/shortuuid/v4"
-	"github.com/thanos-io/objstore"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Config struct {
@@ -255,8 +256,8 @@ func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) err
 	return nil
 }
 
-// Shutdown waits for processing to complete
-func (h *handler) Shutdown(ctx context.Context) error {
+// shutdown waits for processing to complete
+func (h *handler) shutdown(ctx context.Context) error {
 	select {
 	case <-h.done:
 		return nil

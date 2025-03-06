@@ -10,16 +10,17 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
-	v1 "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1"
-	v1connect "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1/v1connect"
-	"github.com/dynoinc/skyvault/internal/background"
-	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"google.golang.org/protobuf/proto"
+
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
+	v1 "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1"
+	"github.com/dynoinc/skyvault/gen/proto/orchestrator/v1/v1connect"
+	"github.com/dynoinc/skyvault/internal/background"
+	"github.com/dynoinc/skyvault/internal/database"
 )
 
 // Config holds the configuration for the orchestrator service

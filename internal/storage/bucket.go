@@ -128,6 +128,6 @@ func New(ctx context.Context, bucketURL string) (objstore.Bucket, error) {
 // nopLogger implements the go-kit log.Logger interface but does nothing
 type nopLogger struct{}
 
-func (l *nopLogger) Log(keyvals ...interface{}) error {
+func (l *nopLogger) Log(_ ...interface{}) error {
 	return nil
 }

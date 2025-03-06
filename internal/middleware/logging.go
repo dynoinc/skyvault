@@ -10,7 +10,7 @@ import (
 // LogErrors returns a connect.Interceptor that logs any RPC errors to stderr.
 func LogErrors() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			resp, err := next(ctx, req)
 			if err != nil {
 				// Get information about the failed request
@@ -33,7 +33,7 @@ func LogErrors() connect.UnaryInterceptorFunc {
 			}
 
 			return resp, err
-		})
+		}
 	}
-	return connect.UnaryInterceptorFunc(interceptor)
+	return interceptor
 }

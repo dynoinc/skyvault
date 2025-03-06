@@ -2,7 +2,6 @@ package recordio
 
 import (
 	"encoding/binary"
-	"errors"
 	"iter"
 )
 
@@ -12,9 +11,6 @@ type Record struct {
 	Value     []byte
 	Tombstone bool
 }
-
-// ErrUnsupportedVersion is returned when the file format version is not supported
-var ErrUnsupportedVersion = errors.New("unsupported recordio version")
 
 // Records returns an iterator over the records in the data
 func Records(data []byte) iter.Seq[Record] {

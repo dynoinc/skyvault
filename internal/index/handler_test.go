@@ -6,12 +6,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	cachev1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
-	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
-	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
-	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
-	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -20,6 +14,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	cachev1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
+	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
+	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
+	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
+	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/mocks"
 )
 
 func TestHandler_Get(t *testing.T) {
@@ -32,7 +33,7 @@ func TestHandler_Get(t *testing.T) {
 	mockCacheClient := mocks.NewMockCacheServiceClient(ctrl)
 
 	// Setup fake Kubernetes client with test pods
-	fakeKubeClient := fake.NewSimpleClientset(&corev1.Pod{
+	fakeKubeClient := fake.NewClientset(&corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cache-pod-1",
 			Namespace: "default",
@@ -56,7 +57,7 @@ func TestHandler_Get(t *testing.T) {
 		ctx:          context.Background(),
 		db:           mockDB,
 		kubeClient:   fakeKubeClient,
-		ring:         NewConsistentRing(),
+		ring:         newConsistentRing(),
 		cacheClients: make(map[string]cachev1connect.CacheServiceClient),
 	}
 
@@ -88,7 +89,7 @@ func TestHandler_Get(t *testing.T) {
 	// Add the mock cache client to the handler
 	h.ringMu.Lock()
 	h.cacheClients["10.0.0.1:5002"] = mockCacheClient
-	h.ring.Add(Member("10.0.0.1:5002"))
+	h.ring.add("10.0.0.1:5002")
 	h.ringMu.Unlock()
 
 	// Call the handler method
@@ -143,7 +144,7 @@ func TestValuePrecedence(t *testing.T) {
 		ctx: ctx,
 		db:  mockDB,
 		ring: &consistentRing{
-			members: []Member{"test-cache:5002"},
+			members: []member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
@@ -200,7 +201,7 @@ func TestEmptyKeyRequest(t *testing.T) {
 		ctx: ctx,
 		db:  mockDB,
 		ring: &consistentRing{
-			members: []Member{"test-cache:5002"},
+			members: []member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
@@ -243,7 +244,7 @@ func TestDatabaseError(t *testing.T) {
 		ctx: ctx,
 		db:  mockDB,
 		ring: &consistentRing{
-			members: []Member{"test-cache:5002"},
+			members: []member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{},
@@ -301,7 +302,7 @@ func TestCacheServiceError(t *testing.T) {
 		ctx: ctx,
 		db:  mockDB,
 		ring: &consistentRing{
-			members: []Member{"primary:5002", "fallback:5002"},
+			members: []member{"primary:5002", "fallback:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{
@@ -367,7 +368,7 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 		ctx: ctx,
 		db:  mockDB,
 		ring: &consistentRing{
-			members: []Member{"test-cache:5002"},
+			members: []member{"test-cache:5002"},
 			hasher:  hasher{},
 		},
 		cacheClients: map[string]cachev1connect.CacheServiceClient{

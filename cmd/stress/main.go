@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,12 +12,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/influxdata/tdigest"
+	"github.com/olekukonko/tablewriter"
+
 	batcherv1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	batcherv1connect "github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	indexv1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	indexv1connect "github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
-	"github.com/influxdata/tdigest"
-	"github.com/olekukonko/tablewriter"
 )
 
 // Configuration options for the stress test
@@ -102,7 +102,7 @@ func main() {
 	flag.Parse()
 
 	// Setup for tracking metrics for each service
-	allMetrics := []*metrics{}
+	var allMetrics []*metrics
 
 	var writtenKeys []string   // Track written keys for index service testing
 	var deletedKeys []string   // Track deleted keys for index service testing
@@ -210,24 +210,6 @@ func main() {
 
 	// Print results
 	printResults(allMetrics)
-}
-
-// waitForServiceReady tries to establish a connection to the service
-func waitForServiceReady(target string) {
-	for i := 0; i < 10; i++ {
-		client := &http.Client{Timeout: time.Second}
-		req, _ := http.NewRequestWithContext(context.Background(), "GET", target, nil)
-		_, err := client.Do(req)
-		if err == nil {
-			fmt.Println("Service is available")
-			break
-		}
-		if i == 9 {
-			log.Printf("Warning: Service connection check failed after multiple attempts: %v", err)
-			log.Println("Continuing anyway, but expect possible connection issues...")
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
 }
 
 func stressBatcher(ctx context.Context, cfg config, target string, m *metrics, writtenKeys, deletedKeys []string, actualWrittenKeys, actualDeletedKeys map[string]bool) {

@@ -32,6 +32,7 @@ just k8s-dev
 ```
 
 This command will:
+
 - Build the SkyVault binary for Linux
 - Create a minimal container image
 - Load the image into Minikube
@@ -56,6 +57,7 @@ just k8s-stress
 ```
 
 Stress test parameters can be customized using environment variables:
+
 - `CONCURRENCY`: Number of concurrent clients (default: 10)
 - `DURATION`: Test duration (default: 10s)
 - `KEY_SIZE`: Size of keys in bytes (default: 16)
@@ -75,6 +77,7 @@ just k8s-reset
 ## Configuration
 
 The deployment can be customized by modifying the values in `values.yaml`. Key configuration options include:
+
 - Resource limits and requests
 - Replica counts
 - Service configurations

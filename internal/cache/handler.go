@@ -7,11 +7,12 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/thanos-io/objstore"
+
 	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	"github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/recordio"
-	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/thanos-io/objstore"
 )
 
 // Config holds the configuration for the cache service
@@ -44,8 +45,8 @@ func newSizeAwareCache(maxSizeBytes int) (*sizeAwareCache, error) {
 	}, nil
 }
 
-// Add adds a key-value pair to the cache, respecting size limits
-func (c *sizeAwareCache) Add(key string, value []byte) bool {
+// add adds a key-value pair to the cache, respecting size limits
+func (c *sizeAwareCache) add(key string, value []byte) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -73,8 +74,8 @@ func (c *sizeAwareCache) Add(key string, value []byte) bool {
 	return true
 }
 
-// Get retrieves a value from the cache
-func (c *sizeAwareCache) Get(key string) ([]byte, bool) {
+// get retrieves a value from the cache
+func (c *sizeAwareCache) get(key string) ([]byte, bool) {
 	return c.cache.Get(key)
 }
 
@@ -144,7 +145,7 @@ func (h *handler) Get(
 
 	// Iterate through the records
 	for record := range recordio.Records(data) {
-		recordKeyStr := string(record.Key)
+		recordKeyStr := record.Key
 		if keyMap[recordKeyStr] {
 			// Create a result for this key
 			result := &v1.Result{}
@@ -191,7 +192,7 @@ func (h *handler) getObjectData(ctx context.Context, objPath string) ([]byte, er
 	defer h.mu.Unlock()
 
 	// Check if the object is in cache
-	if data, found := h.cache.Get(objPath); found {
+	if data, found := h.cache.get(objPath); found {
 		return data, nil
 	}
 
@@ -209,7 +210,7 @@ func (h *handler) getObjectData(ctx context.Context, objPath string) ([]byte, er
 	}
 
 	// Store in cache
-	h.cache.Add(objPath, data)
+	h.cache.add(objPath, data)
 
 	return data, nil
 }

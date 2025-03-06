@@ -15,7 +15,7 @@ sql:
         output_querier_file_name: "sqlc_querier.go"
         overrides:
           - column: "l0_batches.attrs"
-            go_type: 
+            go_type:
               import: "github.com/dynoinc/skyvault/gen/proto/common/v1"
               package: "v1"
               type: "L0Batch"

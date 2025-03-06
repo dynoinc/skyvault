@@ -6,13 +6,14 @@ import (
 	"log/slog"
 	"time"
 
-	v1connect "github.com/dynoinc/skyvault/gen/proto/worker/v1/v1connect"
-	"github.com/dynoinc/skyvault/internal/background"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/thanos-io/objstore"
+
+	"github.com/dynoinc/skyvault/gen/proto/worker/v1/v1connect"
+	"github.com/dynoinc/skyvault/internal/background"
 )
 
 // Config holds the configuration for the worker service
