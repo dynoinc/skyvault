@@ -1,7 +1,12 @@
 CREATE TABLE IF NOT EXISTS l0_batches (
     seq_no BIGSERIAL PRIMARY KEY,
     version integer NOT NULL DEFAULT 1,
-    attrs JSONB DEFAULT '{}' :: JSONB
+    attrs JSONB DEFAULT '{}' :: JSONB NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS partitions (
+    inclusive_start_key TEXT PRIMARY KEY,
+    attrs JSONB DEFAULT '{}' :: JSONB NOT NULL
 );
 
 CREATE OR REPLACE FUNCTION notify_new_l0_batch()

@@ -25,9 +25,10 @@ import (
 
 // Config holds the configuration for the orchestrator service
 type Config struct {
-	Enabled              bool `default:"false"`
-	MinL0Batches         int  `default:"16"`       // minimum number of batches beyond which we merge.
-	MinL0MergedBatchSize int  `default:"16777216"` // minimum size of merged batch.
+	Enabled bool `default:"false"`
+
+	MinL0Batches         int `default:"16"`       // minimum number of batches beyond which we merge.
+	MinL0MergedBatchSize int `default:"16777216"` // minimum size of merged batch.
 }
 
 // handler implements the OrchestratorService
@@ -47,6 +48,10 @@ func NewHandler(
 	db *pgxpool.Pool,
 ) (*handler, error) {
 	slog.InfoContext(ctx, "initializing orchestrator service", "enabled", cfg.Enabled)
+
+	if err := database.New(db).InitPartitions(ctx, commonv1.Partition_builder{}.Build()); err != nil {
+		return nil, fmt.Errorf("failed to initialize partitions: %w", err)
+	}
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &background.MergeL0BatchesWorker{})

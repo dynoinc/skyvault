@@ -20,3 +20,9 @@ sql:
               package: "v1"
               type: "L0Batch"
               pointer: true
+          - column: "partitions.attrs"
+            go_type:
+              import: "github.com/dynoinc/skyvault/gen/proto/common/v1"
+              package: "v1"
+              type: "Partition"
+              pointer: true

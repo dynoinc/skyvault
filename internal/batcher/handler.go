@@ -20,7 +20,7 @@ import (
 	"github.com/dynoinc/skyvault/gen/proto/batcher/v1/v1connect"
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/recordio"
+	"github.com/dynoinc/skyvault/internal/sstable"
 )
 
 type Config struct {
@@ -31,7 +31,7 @@ type Config struct {
 }
 
 type batch struct {
-	records   []recordio.Record
+	records   []sstable.Record
 	callbacks []chan error
 	totalSize int
 }
@@ -133,7 +133,7 @@ func (h *handler) batchLoop() {
 		case wr := <-h.writes:
 			if current == nil {
 				current = &batch{
-					records:   make([]recordio.Record, 0),
+					records:   make([]sstable.Record, 0),
 					callbacks: make([]chan error, 0),
 					totalSize: 0,
 				}
@@ -143,7 +143,7 @@ func (h *handler) batchLoop() {
 
 			current.callbacks = append(current.callbacks, wr.callback)
 			for _, r := range wr.req.GetWrites() {
-				record := recordio.Record{
+				record := sstable.Record{
 					Key:       r.GetKey(),
 					Value:     r.GetPut(),
 					Tombstone: r.GetDelete(),
@@ -200,7 +200,7 @@ func (h *handler) processLoop() {
 	}
 }
 
-func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) error {
+func (h *handler) writeBatch(ctx context.Context, records []sstable.Record) error {
 	// Sort records by key
 	sort.Slice(records, func(i, j int) bool {
 		return records[i].Key < records[j].Key
@@ -224,13 +224,13 @@ func (h *handler) writeBatch(ctx context.Context, records []recordio.Record) err
 	}
 
 	// Calculate size bytes using ComputeSize
-	sizeBytes := int64(recordio.ComputeSize(slices.Values(records)))
+	sizeBytes := int64(sstable.ComputeSize(slices.Values(records)))
 
 	minKey := records[0].Key
 	maxKey := records[len(records)-1].Key
 
 	// Write records to buffer
-	buf := recordio.WriteRecords(slices.Values(records))
+	buf := sstable.WriteRecords(slices.Values(records))
 
 	// Generate a short UUID for the batch
 	id := shortuuid.New()

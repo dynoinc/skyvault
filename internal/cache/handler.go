@@ -12,7 +12,7 @@ import (
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	"github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
-	"github.com/dynoinc/skyvault/internal/recordio"
+	"github.com/dynoinc/skyvault/internal/sstable"
 )
 
 // Config holds the configuration for the cache service
@@ -144,7 +144,7 @@ func (h *handler) Get(
 	foundMap := make(map[string]*v1.Result, len(keys))
 
 	// Iterate through the records
-	for record := range recordio.Records(data) {
+	for record := range sstable.Records(data) {
 		recordKeyStr := record.Key
 		if keyMap[recordKeyStr] {
 			// Create a result for this key

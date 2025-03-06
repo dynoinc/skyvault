@@ -13,3 +13,8 @@ type L0Batch struct {
 	Version int32
 	Attrs   *v1.L0Batch
 }
+
+type Partition struct {
+	InclusiveStartKey string
+	Attrs             *v1.Partition
+}

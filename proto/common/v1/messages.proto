@@ -23,3 +23,6 @@ message L0Batch {
   string min_key = 5;
   string max_key = 6;
 }
+
+message Partition {
+}

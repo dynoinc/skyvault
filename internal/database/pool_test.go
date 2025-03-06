@@ -14,7 +14,7 @@ import (
 	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
-func TestPool(t *testing.T) {
+func setupDB(t *testing.T) *Queries {
 	ctx := t.Context()
 
 	// https://github.com/testcontainers/testcontainers-go/issues/2264
@@ -36,7 +36,7 @@ func TestPool(t *testing.T) {
 	// Test the Pool function
 	pool, err := Pool(ctx, pgURL)
 	require.NoError(t, err)
-	defer pool.Close()
+	t.Cleanup(func() { pool.Close() })
 
 	// Verify that the connection works
 	var one int
@@ -44,14 +44,17 @@ func TestPool(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, one)
 
-	// Create a Queries instance
-	q := New(pool)
+	return New(pool)
+}
+
+func TestL0Batches(t *testing.T) {
+	ctx := t.Context()
+	q := setupDB(t)
 
 	// Verify migrations by checking if the l0_batches table exists and has the expected structure
-	var count int
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM l0_batches").Scan(&count)
-	require.NoError(t, err, "l0_batches table should exist")
-	require.Equal(t, 0, count, "l0_batches table should be empty")
+	l0Batches, err := q.GetL0Batches(ctx)
+	require.NoError(t, err)
+	require.Len(t, l0Batches, 0)
 
 	// Test UpdateL0Batch
 	// 1. Add some test batches
@@ -102,4 +105,23 @@ func TestPool(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, pgx.ErrNoRows, err)
+}
+
+func TestPartitions(t *testing.T) {
+	ctx := t.Context()
+	q := setupDB(t)
+
+	// Verify init partitions
+	err := q.InitPartitions(ctx, v1.Partition_builder{}.Build())
+	require.NoError(t, err)
+
+	// Try again
+	err = q.InitPartitions(ctx, v1.Partition_builder{}.Build())
+	require.NoError(t, err)
+
+	// Get partitions
+	partitions, err := q.GetPartitions(ctx)
+	require.NoError(t, err)
+	require.Len(t, partitions, 1)
+	assert.Equal(t, "", partitions[0].InclusiveStartKey)
 }

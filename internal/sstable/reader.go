@@ -1,4 +1,4 @@
-package recordio
+package sstable
 
 import (
 	"encoding/binary"

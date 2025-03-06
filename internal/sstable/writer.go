@@ -1,4 +1,4 @@
-package recordio
+package sstable
 
 import (
 	"encoding/binary"
@@ -10,7 +10,7 @@ const (
 	currentVersion = uint64(1) // Current file format version
 )
 
-// ComputeSize calculates the size in bytes of the recordio file after serialization
+// ComputeSize calculates the size in bytes of the sstable file after serialization
 func ComputeSize(records iter.Seq[Record]) int {
 	buf := make([]byte, binary.MaxVarintLen64)
 

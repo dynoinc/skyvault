@@ -12,7 +12,7 @@ import (
 	"github.com/thanos-io/objstore"
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
-	"github.com/dynoinc/skyvault/internal/recordio"
+	"github.com/dynoinc/skyvault/internal/sstable"
 )
 
 func TestHandler_Get(t *testing.T) {
@@ -20,15 +20,15 @@ func TestHandler_Get(t *testing.T) {
 	bucket := objstore.NewInMemBucket()
 	ctx := context.Background()
 
-	// Create test data with recordio
-	records := []recordio.Record{
+	// Create test data with sstable
+	records := []sstable.Record{
 		{Key: "key1", Value: []byte("value1")},
 		{Key: "key2", Value: []byte("value2")},
 		{Key: "key3", Value: []byte("value3")},
 		{Key: "deleted-key", Tombstone: true},
 	}
 
-	data := recordio.WriteRecords(slices.Values(records))
+	data := sstable.WriteRecords(slices.Values(records))
 
 	// Upload test data to the mock bucket
 	objPath := "test/object.data"

@@ -22,10 +22,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/dynoinc/skyvault/internal/database"
-	"github.com/dynoinc/skyvault/internal/recordio"
-
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
+	"github.com/dynoinc/skyvault/internal/database"
+	"github.com/dynoinc/skyvault/internal/sstable"
 )
 
 type MergeL0BatchesArgs struct {
@@ -73,9 +72,9 @@ func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0B
 		objs[i] = buf.Bytes()
 	}
 
-	merged := map[string]recordio.Record{}
+	merged := map[string]sstable.Record{}
 	for _, obj := range objs {
-		for record := range recordio.Records(obj) {
+		for record := range sstable.Records(obj) {
 			if _, ok := merged[record.Key]; ok {
 				continue
 			}
@@ -90,13 +89,13 @@ func (w *MergeL0BatchesWorker) Work(ctx context.Context, job *river.Job[MergeL0B
 	})
 
 	// Calculate size bytes using ComputeSize
-	sizeBytes := int64(recordio.ComputeSize(slices.Values(records)))
+	sizeBytes := int64(sstable.ComputeSize(slices.Values(records)))
 
 	minKey := records[0].Key
 	maxKey := records[len(records)-1].Key
 
 	// Write records to buffer
-	buf := recordio.WriteRecords(slices.Values(records))
+	buf := sstable.WriteRecords(slices.Values(records))
 
 	// Generate a short UUID for the batch
 	id := shortuuid.New()
