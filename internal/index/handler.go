@@ -180,8 +180,21 @@ func (h *handler) watchCacheServices(ctx context.Context) error {
 				return
 			case event, ok := <-watcher.ResultChan():
 				if !ok {
-					slog.Error("Watch channel closed unexpectedly")
-					return
+					slog.Error("Watch channel closed unexpectedly, creating new watcher")
+
+					// Create new watcher
+					newWatcher, err := h.kubeClient.CoreV1().Pods(h.config.Namespace).Watch(ctx, metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app.kubernetes.io/component=cache,skyvault.io/instance=%s", h.config.Instance),
+						Watch:         true,
+					})
+					if err != nil {
+						slog.Error("Failed to create new watcher", "error", err)
+						return
+					}
+
+					// Replace old watcher and continue watching
+					watcher = newWatcher
+					continue
 				}
 
 				pod, ok := event.Object.(*corev1.Pod)
