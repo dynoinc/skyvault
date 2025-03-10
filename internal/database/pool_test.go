@@ -61,14 +61,14 @@ func TestL0Batches(t *testing.T) {
 	createdAt := timestamppb.New(time.Now())
 	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
 		CreatedAt: createdAt,
-		State:     v1.L0Batch_NEW.Enum(),
+		State:     v1.L0Batch_NEW,
 	}.Build())
 	require.NoError(t, err)
 
 	createdAt2 := timestamppb.New(createdAt.AsTime().Add(time.Second))
 	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
 		CreatedAt: createdAt2,
-		State:     v1.L0Batch_NEW.Enum(),
+		State:     v1.L0Batch_NEW,
 	}.Build())
 	require.NoError(t, err)
 
@@ -81,7 +81,7 @@ func TestL0Batches(t *testing.T) {
 	updated, err := q.UpdateL0Batch(ctx, UpdateL0BatchParams{
 		SeqNo:   1,
 		Version: 1,
-		Attrs:   v1.L0Batch_builder{State: v1.L0Batch_MERGING.Enum()}.Build(),
+		Attrs:   v1.L0Batch_builder{State: v1.L0Batch_MERGING}.Build(),
 	})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), updated.SeqNo)
@@ -93,7 +93,7 @@ func TestL0Batches(t *testing.T) {
 	updated, err = q.UpdateL0Batch(ctx, UpdateL0BatchParams{
 		SeqNo:   1,
 		Version: 5,
-		Attrs:   v1.L0Batch_builder{State: v1.L0Batch_MERGED.Enum()}.Build(),
+		Attrs:   v1.L0Batch_builder{State: v1.L0Batch_MERGED}.Build(),
 	})
 	require.Error(t, err)
 	require.Equal(t, pgx.ErrNoRows, err)

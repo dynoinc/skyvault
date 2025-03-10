@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
@@ -81,8 +80,8 @@ func TestMergeableBatches(t *testing.T) {
 				l0Batches[i] = database.L0Batch{
 					SeqNo: int64(i + 1),
 					Attrs: commonv1.L0Batch_builder{
-						State:     batch.State.Enum(),
-						SizeBytes: proto.Int64(batch.Size),
+						State:     batch.State,
+						SizeBytes: batch.Size,
 					}.Build(),
 				}
 			}

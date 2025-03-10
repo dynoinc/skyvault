@@ -4,5 +4,7 @@ package worker.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/worker/v1";
 
+option features.field_presence = IMPLICIT;
+
 service WorkerService {
 }

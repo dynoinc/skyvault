@@ -69,17 +69,15 @@ func (x L0Batch_State) Number() protoreflect.EnumNumber {
 }
 
 type L0Batch struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Path        *string                `protobuf:"bytes,1,opt,name=path"`
-	xxx_hidden_State       L0Batch_State          `protobuf:"varint,2,opt,name=state,enum=common.v1.L0Batch_State"`
-	xxx_hidden_CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt"`
-	xxx_hidden_SizeBytes   int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes"`
-	xxx_hidden_MinKey      *string                `protobuf:"bytes,5,opt,name=min_key,json=minKey"`
-	xxx_hidden_MaxKey      *string                `protobuf:"bytes,6,opt,name=max_key,json=maxKey"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Path      string                 `protobuf:"bytes,1,opt,name=path"`
+	xxx_hidden_State     L0Batch_State          `protobuf:"varint,2,opt,name=state,enum=common.v1.L0Batch_State"`
+	xxx_hidden_CreatedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt"`
+	xxx_hidden_SizeBytes int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes"`
+	xxx_hidden_MinKey    string                 `protobuf:"bytes,5,opt,name=min_key,json=minKey"`
+	xxx_hidden_MaxKey    string                 `protobuf:"bytes,6,opt,name=max_key,json=maxKey"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *L0Batch) Reset() {
@@ -109,19 +107,14 @@ func (x *L0Batch) ProtoReflect() protoreflect.Message {
 
 func (x *L0Batch) GetPath() string {
 	if x != nil {
-		if x.xxx_hidden_Path != nil {
-			return *x.xxx_hidden_Path
-		}
-		return ""
+		return x.xxx_hidden_Path
 	}
 	return ""
 }
 
 func (x *L0Batch) GetState() L0Batch_State {
 	if x != nil {
-		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
-			return x.xxx_hidden_State
-		}
+		return x.xxx_hidden_State
 	}
 	return L0Batch_UNSPECIFIED
 }
@@ -142,32 +135,24 @@ func (x *L0Batch) GetSizeBytes() int64 {
 
 func (x *L0Batch) GetMinKey() string {
 	if x != nil {
-		if x.xxx_hidden_MinKey != nil {
-			return *x.xxx_hidden_MinKey
-		}
-		return ""
+		return x.xxx_hidden_MinKey
 	}
 	return ""
 }
 
 func (x *L0Batch) GetMaxKey() string {
 	if x != nil {
-		if x.xxx_hidden_MaxKey != nil {
-			return *x.xxx_hidden_MaxKey
-		}
-		return ""
+		return x.xxx_hidden_MaxKey
 	}
 	return ""
 }
 
 func (x *L0Batch) SetPath(v string) {
-	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	x.xxx_hidden_Path = v
 }
 
 func (x *L0Batch) SetState(v L0Batch_State) {
 	x.xxx_hidden_State = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
 func (x *L0Batch) SetCreatedAt(v *timestamppb.Timestamp) {
@@ -176,31 +161,14 @@ func (x *L0Batch) SetCreatedAt(v *timestamppb.Timestamp) {
 
 func (x *L0Batch) SetSizeBytes(v int64) {
 	x.xxx_hidden_SizeBytes = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
 }
 
 func (x *L0Batch) SetMinKey(v string) {
-	x.xxx_hidden_MinKey = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	x.xxx_hidden_MinKey = v
 }
 
 func (x *L0Batch) SetMaxKey(v string) {
-	x.xxx_hidden_MaxKey = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
-}
-
-func (x *L0Batch) HasPath() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *L0Batch) HasState() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_MaxKey = v
 }
 
 func (x *L0Batch) HasCreatedAt() bool {
@@ -210,103 +178,40 @@ func (x *L0Batch) HasCreatedAt() bool {
 	return x.xxx_hidden_CreatedAt != nil
 }
 
-func (x *L0Batch) HasSizeBytes() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
-}
-
-func (x *L0Batch) HasMinKey() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
-}
-
-func (x *L0Batch) HasMaxKey() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
-}
-
-func (x *L0Batch) ClearPath() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Path = nil
-}
-
-func (x *L0Batch) ClearState() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_State = L0Batch_UNSPECIFIED
-}
-
 func (x *L0Batch) ClearCreatedAt() {
 	x.xxx_hidden_CreatedAt = nil
-}
-
-func (x *L0Batch) ClearSizeBytes() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
-	x.xxx_hidden_SizeBytes = 0
-}
-
-func (x *L0Batch) ClearMinKey() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
-	x.xxx_hidden_MinKey = nil
-}
-
-func (x *L0Batch) ClearMaxKey() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
-	x.xxx_hidden_MaxKey = nil
 }
 
 type L0Batch_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Path      *string
-	State     *L0Batch_State
+	Path      string
+	State     L0Batch_State
 	CreatedAt *timestamppb.Timestamp
 	// Stats
-	SizeBytes *int64
-	MinKey    *string
-	MaxKey    *string
+	SizeBytes int64
+	MinKey    string
+	MaxKey    string
 }
 
 func (b0 L0Batch_builder) Build() *L0Batch {
 	m0 := &L0Batch{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
-		x.xxx_hidden_Path = b.Path
-	}
-	if b.State != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
-		x.xxx_hidden_State = *b.State
-	}
+	x.xxx_hidden_Path = b.Path
+	x.xxx_hidden_State = b.State
 	x.xxx_hidden_CreatedAt = b.CreatedAt
-	if b.SizeBytes != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
-		x.xxx_hidden_SizeBytes = *b.SizeBytes
-	}
-	if b.MinKey != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
-		x.xxx_hidden_MinKey = b.MinKey
-	}
-	if b.MaxKey != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
-		x.xxx_hidden_MaxKey = b.MaxKey
-	}
+	x.xxx_hidden_SizeBytes = b.SizeBytes
+	x.xxx_hidden_MinKey = b.MinKey
+	x.xxx_hidden_MaxKey = b.MaxKey
 	return m0
 }
 
 type Partition struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Path        *string                `protobuf:"bytes,1,opt,name=path"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Path string                 `protobuf:"bytes,1,opt,name=path"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Partition) Reset() {
@@ -336,46 +241,27 @@ func (x *Partition) ProtoReflect() protoreflect.Message {
 
 func (x *Partition) GetPath() string {
 	if x != nil {
-		if x.xxx_hidden_Path != nil {
-			return *x.xxx_hidden_Path
-		}
-		return ""
+		return x.xxx_hidden_Path
 	}
 	return ""
 }
 
 func (x *Partition) SetPath(v string) {
-	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
-}
-
-func (x *Partition) HasPath() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *Partition) ClearPath() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Path = nil
+	x.xxx_hidden_Path = v
 }
 
 type Partition_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// TODO: Represent a full LSM tree with indexes here.
-	Path *string
+	Path string
 }
 
 func (b0 Partition_builder) Build() *Partition {
 	m0 := &Partition{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
-		x.xxx_hidden_Path = b.Path
-	}
+	x.xxx_hidden_Path = b.Path
 	return m0
 }
 
@@ -406,11 +292,11 @@ var file_proto_common_v1_messages_proto_rawDesc = string([]byte{
 	0x45, 0x52, 0x47, 0x49, 0x4e, 0x47, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x4d, 0x45, 0x52, 0x47,
 	0x45, 0x44, 0x10, 0x03, 0x22, 0x1f, 0x0a, 0x09, 0x50, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f,
 	0x6e, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x04, 0x70, 0x61, 0x74, 0x68, 0x42, 0x31, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x04, 0x70, 0x61, 0x74, 0x68, 0x42, 0x36, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
 	0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x79, 0x6e, 0x6f, 0x69, 0x6e, 0x63, 0x2f, 0x73, 0x6b, 0x79, 0x76,
 	0x61, 0x75, 0x6c, 0x74, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63,
-	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0x62, 0x08, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f,
-	0x6e, 0x73, 0x70, 0xe8, 0x07,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0x92, 0x03, 0x02, 0x08, 0x02, 0x62, 0x08, 0x65,
+	0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
 })
 
 var file_proto_common_v1_messages_proto_enumTypes = make([]protoimpl.EnumInfo, 1)

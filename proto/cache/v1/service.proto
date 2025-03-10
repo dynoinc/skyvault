@@ -4,6 +4,8 @@ package cache.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/cache/v1";
 
+option features.field_presence = IMPLICIT;
+
 service CacheService {
   rpc Get(GetRequest) returns (GetResponse) {}
 }

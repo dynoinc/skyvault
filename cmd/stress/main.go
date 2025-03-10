@@ -275,7 +275,7 @@ func stressBatcher(ctx context.Context, cfg config, target string, m *metrics, w
 							batchKeys[j] = keyStr
 
 							writes[j] = batcherv1.WriteRequest_builder{
-								Key: &keyStr,
+								Key: keyStr,
 								Put: value,
 							}.Build()
 						}
@@ -308,7 +308,7 @@ func stressBatcher(ctx context.Context, cfg config, target string, m *metrics, w
 							deleteTrue := true
 
 							deletes[j] = batcherv1.WriteRequest_builder{
-								Key:    &keyStr,
+								Key:    keyStr,
 								Delete: &deleteTrue,
 							}.Build()
 						}

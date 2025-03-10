@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
@@ -68,7 +67,7 @@ func TestSingleWrite(t *testing.T) {
 		{
 			SeqNo: 1,
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("some/path"),
+				Path: "some/path",
 			}.Build(),
 		},
 	}, nil)
@@ -112,13 +111,13 @@ func TestBatchBySize(t *testing.T) {
 		{
 			SeqNo: 1,
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("some/path"),
+				Path: "some/path",
 			}.Build(),
 		},
 		{
 			SeqNo: 2,
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("another/path"),
+				Path: "another/path",
 			}.Build(),
 		},
 	}, nil)
@@ -176,7 +175,7 @@ func TestGracefulShutdown(t *testing.T) {
 		{
 			SeqNo: 1,
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("some/path"),
+				Path: "some/path",
 			}.Build(),
 		},
 	}, nil)

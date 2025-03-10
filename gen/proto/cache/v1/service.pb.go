@@ -21,13 +21,11 @@ const (
 )
 
 type GetRequest struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_ObjectPath  *string                `protobuf:"bytes,1,opt,name=object_path,json=objectPath"`
-	xxx_hidden_Keys        []string               `protobuf:"bytes,2,rep,name=keys"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ObjectPath string                 `protobuf:"bytes,1,opt,name=object_path,json=objectPath"`
+	xxx_hidden_Keys       []string               `protobuf:"bytes,2,rep,name=keys"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GetRequest) Reset() {
@@ -57,10 +55,7 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 
 func (x *GetRequest) GetObjectPath() string {
 	if x != nil {
-		if x.xxx_hidden_ObjectPath != nil {
-			return *x.xxx_hidden_ObjectPath
-		}
-		return ""
+		return x.xxx_hidden_ObjectPath
 	}
 	return ""
 }
@@ -73,30 +68,17 @@ func (x *GetRequest) GetKeys() []string {
 }
 
 func (x *GetRequest) SetObjectPath(v string) {
-	x.xxx_hidden_ObjectPath = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	x.xxx_hidden_ObjectPath = v
 }
 
 func (x *GetRequest) SetKeys(v []string) {
 	x.xxx_hidden_Keys = v
 }
 
-func (x *GetRequest) HasObjectPath() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *GetRequest) ClearObjectPath() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_ObjectPath = nil
-}
-
 type GetRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	ObjectPath *string
+	ObjectPath string
 	Keys       []string
 }
 
@@ -104,10 +86,7 @@ func (b0 GetRequest_builder) Build() *GetRequest {
 	m0 := &GetRequest{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.ObjectPath != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
-		x.xxx_hidden_ObjectPath = b.ObjectPath
-	}
+	x.xxx_hidden_ObjectPath = b.ObjectPath
 	x.xxx_hidden_Keys = b.Keys
 	return m0
 }
@@ -401,11 +380,11 @@ var file_proto_cache_v1_service_proto_rawDesc = string([]byte{
 	0x03, 0x47, 0x65, 0x74, 0x12, 0x14, 0x2e, 0x63, 0x61, 0x63, 0x68, 0x65, 0x2e, 0x76, 0x31, 0x2e,
 	0x47, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x63, 0x61, 0x63,
 	0x68, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x42, 0x30, 0x5a, 0x2e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x65, 0x22, 0x00, 0x42, 0x35, 0x5a, 0x2e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
 	0x6d, 0x2f, 0x64, 0x79, 0x6e, 0x6f, 0x69, 0x6e, 0x63, 0x2f, 0x73, 0x6b, 0x79, 0x76, 0x61, 0x75,
 	0x6c, 0x74, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x61, 0x63,
-	0x68, 0x65, 0x2f, 0x76, 0x31, 0x62, 0x08, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70,
-	0xe8, 0x07,
+	0x68, 0x65, 0x2f, 0x76, 0x31, 0x92, 0x03, 0x02, 0x08, 0x02, 0x62, 0x08, 0x65, 0x64, 0x69, 0x74,
+	0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
 })
 
 var file_proto_cache_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)

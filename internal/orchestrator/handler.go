@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
-	"google.golang.org/protobuf/proto"
 
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	v1 "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1"
@@ -124,7 +123,7 @@ func (h *handler) maybeScheduleMergeJob(l0Batches []database.L0Batch) error {
 		updatedBatchesToMerge[i], err = qtx.UpdateL0Batch(h.ctx, database.UpdateL0BatchParams{
 			SeqNo:   batch.SeqNo,
 			Version: batch.Version,
-			Attrs:   commonv1.L0Batch_builder{State: commonv1.L0Batch_MERGING.Enum()}.Build(),
+			Attrs:   commonv1.L0Batch_builder{State: commonv1.L0Batch_MERGING}.Build(),
 		})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -178,8 +177,8 @@ func (h *handler) ListL0Batches(context.Context, *connect.Request[v1.ListL0Batch
 	protoBatches := make([]*v1.L0Batch, len(l0Batches))
 	for i, batch := range l0Batches {
 		protoBatches[i] = v1.L0Batch_builder{
-			SeqNo:   proto.Int64(batch.SeqNo),
-			Version: proto.Int32(batch.Version),
+			SeqNo:   batch.SeqNo,
+			Version: batch.Version,
 			Attrs:   batch.Attrs,
 		}.Build()
 	}

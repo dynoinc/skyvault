@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/btree"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +49,7 @@ func TestHandler_Get(t *testing.T) {
 	now := time.Now()
 	batch1 := database.L0Batch{
 		Attrs: commonv1.L0Batch_builder{
-			Path:      proto.String("batch1"),
+			Path:      "batch1",
 			CreatedAt: timestamppb.New(now),
 		}.Build(),
 	}
@@ -116,13 +115,13 @@ func TestValuePrecedence(t *testing.T) {
 	now := time.Now()
 	batch1 := database.L0Batch{
 		Attrs: commonv1.L0Batch_builder{
-			Path:      proto.String("batch1"),
+			Path:      "batch1",
 			CreatedAt: timestamppb.New(now),
 		}.Build(),
 	}
 	batch2 := database.L0Batch{
 		Attrs: commonv1.L0Batch_builder{
-			Path:      proto.String("batch2"),
+			Path:      "batch2",
 			CreatedAt: timestamppb.New(now.Add(-1 * time.Hour)),
 		}.Build(),
 	}
@@ -225,7 +224,7 @@ func TestCacheServiceError(t *testing.T) {
 	now := time.Now()
 	batch1 := database.L0Batch{
 		Attrs: commonv1.L0Batch_builder{
-			Path:      proto.String("batch1"),
+			Path:      "batch1",
 			CreatedAt: timestamppb.New(now),
 		}.Build(),
 	}
@@ -286,17 +285,17 @@ func TestValueAndTombstonePrecedence(t *testing.T) {
 	batches := []database.L0Batch{
 		{
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("l0_batches/batch3"),
+				Path: "l0_batches/batch3",
 			}.Build(),
 		},
 		{
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("l0_batches/batch2"),
+				Path: "l0_batches/batch2",
 			}.Build(),
 		},
 		{
 			Attrs: commonv1.L0Batch_builder{
-				Path: proto.String("l0_batches/batch1"),
+				Path: "l0_batches/batch1",
 			}.Build(),
 		},
 	}
@@ -425,19 +424,19 @@ func TestPartitionLookup(t *testing.T) {
 
 	// Partition 1: keys < "k2"
 	partition1 := commonv1.Partition_builder{
-		Path: proto.String("partition1/data"),
+		Path: "partition1/data",
 	}.Build()
 	partitions.Set("", partition1) // Empty string is the start key for first partition
 
 	// Partition 2: k2 <= keys < k4
 	partition2 := commonv1.Partition_builder{
-		Path: proto.String("partition2/data"),
+		Path: "partition2/data",
 	}.Build()
 	partitions.Set("k2", partition2)
 
 	// Partition 3: k4 <= keys
 	partition3 := commonv1.Partition_builder{
-		Path: proto.String("partition3/data"),
+		Path: "partition3/data",
 	}.Build()
 	partitions.Set("k4", partition3)
 

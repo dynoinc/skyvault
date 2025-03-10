@@ -4,6 +4,8 @@ package index.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/index/v1";
 
+option features.field_presence = IMPLICIT;
+
 service IndexService {
   rpc BatchGet(BatchGetRequest) returns (BatchGetResponse) {}
 }

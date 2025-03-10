@@ -80,13 +80,11 @@ func (b0 BatchWriteRequest_builder) Build() *BatchWriteRequest {
 }
 
 type WriteRequest struct {
-	state                  protoimpl.MessageState   `protogen:"opaque.v1"`
-	xxx_hidden_Key         *string                  `protobuf:"bytes,1,opt,name=key"`
-	xxx_hidden_Operation   isWriteRequest_Operation `protobuf_oneof:"operation"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                protoimpl.MessageState   `protogen:"opaque.v1"`
+	xxx_hidden_Key       string                   `protobuf:"bytes,1,opt,name=key"`
+	xxx_hidden_Operation isWriteRequest_Operation `protobuf_oneof:"operation"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *WriteRequest) Reset() {
@@ -116,10 +114,7 @@ func (x *WriteRequest) ProtoReflect() protoreflect.Message {
 
 func (x *WriteRequest) GetKey() string {
 	if x != nil {
-		if x.xxx_hidden_Key != nil {
-			return *x.xxx_hidden_Key
-		}
-		return ""
+		return x.xxx_hidden_Key
 	}
 	return ""
 }
@@ -143,8 +138,7 @@ func (x *WriteRequest) GetDelete() bool {
 }
 
 func (x *WriteRequest) SetKey(v string) {
-	x.xxx_hidden_Key = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	x.xxx_hidden_Key = v
 }
 
 func (x *WriteRequest) SetPut(v []byte) {
@@ -156,13 +150,6 @@ func (x *WriteRequest) SetPut(v []byte) {
 
 func (x *WriteRequest) SetDelete(v bool) {
 	x.xxx_hidden_Operation = &writeRequest_Delete{v}
-}
-
-func (x *WriteRequest) HasKey() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
 func (x *WriteRequest) HasOperation() bool {
@@ -186,11 +173,6 @@ func (x *WriteRequest) HasDelete() bool {
 	}
 	_, ok := x.xxx_hidden_Operation.(*writeRequest_Delete)
 	return ok
-}
-
-func (x *WriteRequest) ClearKey() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Key = nil
 }
 
 func (x *WriteRequest) ClearOperation() {
@@ -230,7 +212,7 @@ func (x *WriteRequest) WhichOperation() case_WriteRequest_Operation {
 type WriteRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Key *string
+	Key string
 	// Fields of oneof xxx_hidden_Operation:
 	Put    []byte
 	Delete *bool
@@ -241,10 +223,7 @@ func (b0 WriteRequest_builder) Build() *WriteRequest {
 	m0 := &WriteRequest{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.Key != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
-		x.xxx_hidden_Key = b.Key
-	}
+	x.xxx_hidden_Key = b.Key
 	if b.Put != nil {
 		x.xxx_hidden_Operation = &writeRequest_Put{b.Put}
 	}
@@ -346,11 +325,11 @@ var file_proto_batcher_v1_service_proto_rawDesc = string([]byte{
 	0x2e, 0x76, 0x31, 0x2e, 0x42, 0x61, 0x74, 0x63, 0x68, 0x57, 0x72, 0x69, 0x74, 0x65, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x62, 0x61, 0x74, 0x63, 0x68, 0x65, 0x72, 0x2e,
 	0x76, 0x31, 0x2e, 0x42, 0x61, 0x74, 0x63, 0x68, 0x57, 0x72, 0x69, 0x74, 0x65, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x32, 0x5a, 0x30, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x37, 0x5a, 0x30, 0x67, 0x69, 0x74, 0x68, 0x75,
 	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x79, 0x6e, 0x6f, 0x69, 0x6e, 0x63, 0x2f, 0x73, 0x6b,
 	0x79, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2f, 0x62, 0x61, 0x74, 0x63, 0x68, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x62, 0x08, 0x65, 0x64, 0x69,
-	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
+	0x2f, 0x62, 0x61, 0x74, 0x63, 0x68, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x92, 0x03, 0x02, 0x08, 0x02,
+	0x62, 0x08, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
 })
 
 var file_proto_batcher_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)

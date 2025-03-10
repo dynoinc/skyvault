@@ -4,6 +4,8 @@ package orchestrator.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/orchestrator/v1";
 
+option features.field_presence = IMPLICIT;
+
 import "proto/common/v1/messages.proto";
 
 service OrchestratorService {

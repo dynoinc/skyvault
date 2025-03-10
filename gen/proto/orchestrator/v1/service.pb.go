@@ -124,14 +124,12 @@ func (b0 ListL0BatchesResponse_builder) Build() *ListL0BatchesResponse {
 }
 
 type L0Batch struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_SeqNo       int64                  `protobuf:"varint,1,opt,name=seq_no,json=seqNo"`
-	xxx_hidden_Version     int32                  `protobuf:"varint,2,opt,name=version"`
-	xxx_hidden_Attrs       *v1.L0Batch            `protobuf:"bytes,3,opt,name=attrs"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SeqNo   int64                  `protobuf:"varint,1,opt,name=seq_no,json=seqNo"`
+	xxx_hidden_Version int32                  `protobuf:"varint,2,opt,name=version"`
+	xxx_hidden_Attrs   *v1.L0Batch            `protobuf:"bytes,3,opt,name=attrs"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *L0Batch) Reset() {
@@ -182,30 +180,14 @@ func (x *L0Batch) GetAttrs() *v1.L0Batch {
 
 func (x *L0Batch) SetSeqNo(v int64) {
 	x.xxx_hidden_SeqNo = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *L0Batch) SetVersion(v int32) {
 	x.xxx_hidden_Version = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
 }
 
 func (x *L0Batch) SetAttrs(v *v1.L0Batch) {
 	x.xxx_hidden_Attrs = v
-}
-
-func (x *L0Batch) HasSeqNo() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *L0Batch) HasVersion() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
 func (x *L0Batch) HasAttrs() bool {
@@ -215,16 +197,6 @@ func (x *L0Batch) HasAttrs() bool {
 	return x.xxx_hidden_Attrs != nil
 }
 
-func (x *L0Batch) ClearSeqNo() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_SeqNo = 0
-}
-
-func (x *L0Batch) ClearVersion() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Version = 0
-}
-
 func (x *L0Batch) ClearAttrs() {
 	x.xxx_hidden_Attrs = nil
 }
@@ -232,8 +204,8 @@ func (x *L0Batch) ClearAttrs() {
 type L0Batch_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	SeqNo   *int64
-	Version *int32
+	SeqNo   int64
+	Version int32
 	Attrs   *v1.L0Batch
 }
 
@@ -241,14 +213,8 @@ func (b0 L0Batch_builder) Build() *L0Batch {
 	m0 := &L0Batch{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.SeqNo != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
-		x.xxx_hidden_SeqNo = *b.SeqNo
-	}
-	if b.Version != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
-		x.xxx_hidden_Version = *b.Version
-	}
+	x.xxx_hidden_SeqNo = b.SeqNo
+	x.xxx_hidden_Version = b.Version
 	x.xxx_hidden_Attrs = b.Attrs
 	return m0
 }
@@ -281,12 +247,12 @@ var file_proto_orchestrator_v1_service_proto_rawDesc = string([]byte{
 	0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4c, 0x30, 0x42, 0x61, 0x74, 0x63, 0x68, 0x65, 0x73, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x6f, 0x72, 0x63, 0x68, 0x65, 0x73, 0x74, 0x72,
 	0x61, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4c, 0x30, 0x42, 0x61,
-	0x74, 0x63, 0x68, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x37, 0x5a,
+	0x74, 0x63, 0x68, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a,
 	0x35, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x79, 0x6e, 0x6f,
 	0x69, 0x6e, 0x63, 0x2f, 0x73, 0x6b, 0x79, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x2f, 0x67, 0x65, 0x6e,
 	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x6f, 0x72, 0x63, 0x68, 0x65, 0x73, 0x74, 0x72, 0x61,
-	0x74, 0x6f, 0x72, 0x2f, 0x76, 0x31, 0x62, 0x08, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73,
-	0x70, 0xe8, 0x07,
+	0x74, 0x6f, 0x72, 0x2f, 0x76, 0x31, 0x92, 0x03, 0x02, 0x08, 0x02, 0x62, 0x08, 0x65, 0x64, 0x69,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
 })
 
 var file_proto_orchestrator_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)

@@ -13,7 +13,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/lithammer/shortuuid/v4"
 	"github.com/thanos-io/objstore"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/batcher/v1"
@@ -243,12 +242,12 @@ func (h *handler) writeBatch(ctx context.Context, records []sstable.Record) erro
 
 	// Add record to database
 	if err := h.db.AddL0Batch(ctx, commonv1.L0Batch_builder{
-		State:     commonv1.L0Batch_NEW.Enum(),
-		Path:      proto.String(objPath),
+		State:     commonv1.L0Batch_NEW,
+		Path:      objPath,
 		CreatedAt: timestamppb.New(time.Now()),
-		SizeBytes: proto.Int64(sizeBytes),
-		MinKey:    proto.String(minKey),
-		MaxKey:    proto.String(maxKey),
+		SizeBytes: sizeBytes,
+		MinKey:    minKey,
+		MaxKey:    maxKey,
 	}.Build()); err != nil {
 		return fmt.Errorf("adding batch record: %w", err)
 	}

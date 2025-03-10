@@ -4,6 +4,8 @@ package common.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/common/v1";
 
+option features.field_presence = IMPLICIT;
+
 import "google/protobuf/timestamp.proto";
 
 message L0Batch {
