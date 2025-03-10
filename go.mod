@@ -25,7 +25,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lithammer/shortuuid/v4 v4.2.0
 	github.com/lmittmann/tint v1.0.7
-	github.com/minio/minio-go/v7 v7.0.87
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.21.1
 	github.com/riverqueue/river v0.18.0
@@ -45,6 +44,8 @@ require (
 	k8s.io/apimachinery v0.32.2
 	k8s.io/client-go v0.32.2
 )
+
+require github.com/minio/minio-go/v7 v7.0.87 // indirect
 
 require (
 	buf.build/gen/go/bufbuild/bufplugin/protocolbuffers/go v1.36.3-20241031151143-70f632351282.1 // indirect

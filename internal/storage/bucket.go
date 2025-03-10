@@ -4,15 +4,12 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/filesystem"
 	thanos_s3 "github.com/thanos-io/objstore/providers/s3"
@@ -45,40 +42,6 @@ func New(ctx context.Context, bucketURL string) (objstore.Bucket, error) {
 
 		// Determine if TLS should be used based on the bucket URL
 		useSSL := strings.HasPrefix(bucketURL, "https://")
-
-		// Initialize Minio client
-		minioClient, err := minio.New(endpoint, &minio.Options{
-			Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-			Secure: useSSL,
-			Region: region,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("creating Minio client: %w", err)
-		}
-
-		// Check if the bucket exists
-		exists, err := minioClient.BucketExists(ctx, bucketName)
-		if err != nil {
-			return nil, fmt.Errorf("checking if bucket exists: %w", err)
-		}
-
-		// Create the bucket if it doesn't exist
-		if !exists {
-			slog.Info("bucket does not exist, creating it", "bucket", bucketName)
-
-			err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{
-				Region: region,
-			})
-
-			if err != nil {
-				// Check if the bucket was created by another process
-				exists, errCheck := minioClient.BucketExists(ctx, bucketName)
-				if errCheck != nil || !exists {
-					return nil, fmt.Errorf("creating bucket: %w", err)
-				}
-			}
-			slog.Info("bucket created successfully", "bucket", bucketName)
-		}
 
 		// Now create the Thanos S3 bucket client for compatibility with the rest of the codebase
 		var bucket objstore.Bucket
