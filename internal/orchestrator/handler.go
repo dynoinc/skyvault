@@ -48,10 +48,6 @@ func NewHandler(
 ) (*handler, error) {
 	slog.InfoContext(ctx, "initializing orchestrator service", "enabled", cfg.Enabled)
 
-	if err := database.New(db).InitPartitions(ctx, commonv1.Partition_builder{}.Build()); err != nil {
-		return nil, fmt.Errorf("failed to initialize partitions: %w", err)
-	}
-
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &background.MergeL0BatchesWorker{})
 

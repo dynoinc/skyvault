@@ -116,20 +116,6 @@ func (mr *MockQuerierMockRecorder) GetPartitions(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPartitions", reflect.TypeOf((*MockQuerier)(nil).GetPartitions), ctx)
 }
 
-// InitPartitions mocks base method.
-func (m *MockQuerier) InitPartitions(ctx context.Context, attrs *v1.Partition) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitPartitions", ctx, attrs)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// InitPartitions indicates an expected call of InitPartitions.
-func (mr *MockQuerierMockRecorder) InitPartitions(ctx, attrs any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitPartitions", reflect.TypeOf((*MockQuerier)(nil).InitPartitions), ctx, attrs)
-}
-
 // UpdateL0Batch mocks base method.
 func (m *MockQuerier) UpdateL0Batch(ctx context.Context, arg database.UpdateL0BatchParams) (database.L0Batch, error) {
 	m.ctrl.T.Helper()

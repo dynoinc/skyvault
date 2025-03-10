@@ -16,7 +16,6 @@ type Querier interface {
 	GetL0Batches(ctx context.Context) ([]L0Batch, error)
 	GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]L0Batch, error)
 	GetPartitions(ctx context.Context) ([]Partition, error)
-	InitPartitions(ctx context.Context, attrs *v1.Partition) error
 	UpdateL0Batch(ctx context.Context, arg UpdateL0BatchParams) (L0Batch, error)
 }
 

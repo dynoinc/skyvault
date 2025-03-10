@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS partitions (
     attrs JSONB DEFAULT '{}' :: JSONB NOT NULL
 );
 
+INSERT INTO partitions (inclusive_start_key, attrs)
+SELECT '', '{}';
+
 CREATE OR REPLACE FUNCTION notify_new_l0_batch()
 RETURNS TRIGGER AS $$
 BEGIN

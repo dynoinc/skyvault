@@ -7,8 +7,6 @@ package database
 
 import (
 	"context"
-
-	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 )
 
 const getPartitions = `-- name: GetPartitions :many
@@ -33,15 +31,4 @@ func (q *Queries) GetPartitions(ctx context.Context) ([]Partition, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const initPartitions = `-- name: InitPartitions :exec
-INSERT INTO partitions (inclusive_start_key, attrs)
-SELECT '', $1
-WHERE NOT EXISTS (SELECT 1 FROM partitions)
-`
-
-func (q *Queries) InitPartitions(ctx context.Context, attrs *v1.Partition) error {
-	_, err := q.db.Exec(ctx, initPartitions, attrs)
-	return err
 }

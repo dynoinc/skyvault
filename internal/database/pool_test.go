@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
@@ -111,17 +112,10 @@ func TestPartitions(t *testing.T) {
 	ctx := t.Context()
 	q := setupDB(t)
 
-	// Verify init partitions
-	err := q.InitPartitions(ctx, v1.Partition_builder{}.Build())
-	require.NoError(t, err)
-
-	// Try again
-	err = q.InitPartitions(ctx, v1.Partition_builder{}.Build())
-	require.NoError(t, err)
-
 	// Get partitions
 	partitions, err := q.GetPartitions(ctx)
 	require.NoError(t, err)
 	require.Len(t, partitions, 1)
 	assert.Equal(t, "", partitions[0].InclusiveStartKey)
+	assert.True(t, proto.Equal(v1.Partition_builder{}.Build(), partitions[0].Attrs))
 }
