@@ -57,22 +57,22 @@ func TestSingleWrite(t *testing.T) {
 	ctx := t.Context()
 
 	// Setup expectations for the first GetAllL0Batches call
-	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{}, nil)
+	db.EXPECT().GetWriteAheadLogs(gomock.Any()).Return([]database.WriteAheadLog{}, nil)
 
-	// Expect AddL0Batch to be called once
-	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(nil)
+	// Expect AddWriteAheadLog to be called once
+	db.EXPECT().AddWriteAheadLog(gomock.Any(), gomock.Any()).Return(nil)
 
 	// Setup expectations for the second GetAllL0Batches call
-	db.EXPECT().GetL0Batches(gomock.Any()).Return([]database.L0Batch{
+	db.EXPECT().GetWriteAheadLogs(gomock.Any()).Return([]database.WriteAheadLog{
 		{
 			SeqNo: 1,
-			Attrs: commonv1.L0Batch_builder{
+			Attrs: commonv1.WriteAheadLog_builder{
 				Path: "some/path",
 			}.Build(),
 		},
 	}, nil)
 
-	batches, err := db.GetL0Batches(ctx)
+	batches, err := db.GetWriteAheadLogs(ctx)
 	require.NoError(t, err)
 	require.Empty(t, batches)
 
@@ -90,7 +90,7 @@ func TestSingleWrite(t *testing.T) {
 	_, err = handler.BatchWrite(ctx, connect.NewRequest(req))
 	require.NoError(t, err)
 
-	batches, err = db.GetL0Batches(ctx)
+	batches, err = db.GetWriteAheadLogs(ctx)
 	require.NoError(t, err)
 	require.Len(t, batches, 1)
 }
@@ -103,20 +103,20 @@ func TestBatchBySize(t *testing.T) {
 	finalCallCtx := ctx
 
 	// Setup expectations - use AnyTimes but don't match the finalCallCtx
-	db.EXPECT().GetL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
-	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	db.EXPECT().GetWriteAheadLogs(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.WriteAheadLog{}, nil).AnyTimes()
+	db.EXPECT().AddWriteAheadLog(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// For the final check, match only the finalCallCtx
-	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
+	db.EXPECT().GetWriteAheadLogs(finalCallCtx).Return([]database.WriteAheadLog{
 		{
 			SeqNo: 1,
-			Attrs: commonv1.L0Batch_builder{
+			Attrs: commonv1.WriteAheadLog_builder{
 				Path: "some/path",
 			}.Build(),
 		},
 		{
 			SeqNo: 2,
-			Attrs: commonv1.L0Batch_builder{
+			Attrs: commonv1.WriteAheadLog_builder{
 				Path: "another/path",
 			}.Build(),
 		},
@@ -154,7 +154,7 @@ func TestBatchBySize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify two batches were created
-	batches, err := db.GetL0Batches(finalCallCtx)
+	batches, err := db.GetWriteAheadLogs(finalCallCtx)
 	require.NoError(t, err)
 	require.Len(t, batches, 2)
 }
@@ -167,14 +167,14 @@ func TestGracefulShutdown(t *testing.T) {
 	finalCallCtx := ctx
 
 	// Setup expectations
-	db.EXPECT().GetL0Batches(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.L0Batch{}, nil).AnyTimes()
-	db.EXPECT().AddL0Batch(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	db.EXPECT().GetWriteAheadLogs(gomock.Not(gomock.Eq(finalCallCtx))).Return([]database.WriteAheadLog{}, nil).AnyTimes()
+	db.EXPECT().AddWriteAheadLog(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// For the final check
-	db.EXPECT().GetL0Batches(finalCallCtx).Return([]database.L0Batch{
+	db.EXPECT().GetWriteAheadLogs(finalCallCtx).Return([]database.WriteAheadLog{
 		{
 			SeqNo: 1,
-			Attrs: commonv1.L0Batch_builder{
+			Attrs: commonv1.WriteAheadLog_builder{
 				Path: "some/path",
 			}.Build(),
 		},
@@ -197,7 +197,7 @@ func TestGracefulShutdown(t *testing.T) {
 	}()
 	require.NoError(t, <-errCh)
 
-	batches, err := db.GetL0Batches(finalCallCtx)
+	batches, err := db.GetWriteAheadLogs(finalCallCtx)
 	require.NoError(t, err)
 	require.Len(t, batches, 1)
 

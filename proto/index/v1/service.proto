@@ -15,12 +15,6 @@ message BatchGetRequest {
 }
 
 message BatchGetResponse {
-  repeated Result results = 1;
+  map<string, bytes> results = 1;
 }
 
-message Result {
-  oneof status {
-    bytes found = 1;
-    bool not_found = 2;
-  }
-}

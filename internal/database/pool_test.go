@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -48,64 +47,52 @@ func setupDB(t *testing.T) *Queries {
 	return New(pool)
 }
 
-func TestL0Batches(t *testing.T) {
+func TestWriteAheadLogs(t *testing.T) {
 	ctx := t.Context()
 	q := setupDB(t)
 
 	// Verify migrations by checking if the l0_batches table exists and has the expected structure
-	l0Batches, err := q.GetL0Batches(ctx)
+	writeAheadLogs, err := q.GetWriteAheadLogs(ctx)
 	require.NoError(t, err)
-	require.Len(t, l0Batches, 0)
+	require.Len(t, writeAheadLogs, 0)
 
-	// Test UpdateL0Batch
-	// 1. Add some test batches
+	// 1. Add some test logs
 	createdAt := timestamppb.New(time.Now())
-	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
+	err = q.AddWriteAheadLog(ctx, v1.WriteAheadLog_builder{
 		CreatedAt: createdAt,
-		State:     v1.L0Batch_NEW,
 	}.Build())
 	require.NoError(t, err)
 
 	createdAt2 := timestamppb.New(createdAt.AsTime().Add(time.Second))
-	err = q.AddL0Batch(ctx, v1.L0Batch_builder{
+	err = q.AddWriteAheadLog(ctx, v1.WriteAheadLog_builder{
 		CreatedAt: createdAt2,
-		State:     v1.L0Batch_NEW,
 	}.Build())
 	require.NoError(t, err)
 
-	// 2. Verify the batches are added
-	batches, err := q.GetL0BatchesBySeqNo(ctx, []int64{1, 2})
+	// 2. Verify the logs are added
+	logs, err := q.GetWriteAheadLogs(ctx)
 	require.NoError(t, err)
-	require.Len(t, batches, 2)
+	require.Len(t, logs, 2)
 
-	// 3. Update the status using UpdateL0Batch
-	updated, err := q.UpdateL0Batch(ctx, UpdateL0BatchParams{
-		SeqNo:   1,
-		Version: 1,
-		Attrs:   v1.L0Batch_builder{State: v1.L0Batch_MERGING}.Build(),
-	})
+	// 3. Updating the status with missing logs should fail
+	updated, err := q.MarkWriteAheadLogsAsCompacting(ctx, []int64{1, 2, 3})
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), updated.SeqNo)
-	assert.Equal(t, int32(2), updated.Version)
-	assert.Equal(t, v1.L0Batch_MERGING, updated.Attrs.GetState())
-	assert.Equal(t, createdAt, updated.Attrs.GetCreatedAt())
+	assert.False(t, updated)
 
-	// 4. Test that UpdateL0Batch only updates rows with the matching version
-	updated, err = q.UpdateL0Batch(ctx, UpdateL0BatchParams{
-		SeqNo:   1,
-		Version: 5,
-		Attrs:   v1.L0Batch_builder{State: v1.L0Batch_MERGED}.Build(),
-	})
-	require.Error(t, err)
-	require.Equal(t, pgx.ErrNoRows, err)
+	// 4. Update the status using MarkWriteAheadLogsAsCompacting
+	updated, err = q.MarkWriteAheadLogsAsCompacting(ctx, []int64{1})
+	require.NoError(t, err)
+	assert.True(t, updated)
 
-	// 5. Try to delete a batch with version 5
-	_, err = q.DeleteL0Batch(ctx, DeleteL0BatchParams{
-		SeqNo:   1,
-		Version: 5,
-	})
-	require.Error(t, err)
-	require.Equal(t, pgx.ErrNoRows, err)
+	// 5. Trying to delete a compacting batch should fail
+	updated, err = q.DeleteWriteAheadLogs(ctx, []int64{1, 2})
+	require.NoError(t, err)
+	assert.False(t, updated)
+
+	// 6. Trying to delete only compacting logs should succeed
+	updated, err = q.DeleteWriteAheadLogs(ctx, []int64{1})
+	require.NoError(t, err)
+	assert.True(t, updated)
 }
 
 func TestPartitions(t *testing.T) {

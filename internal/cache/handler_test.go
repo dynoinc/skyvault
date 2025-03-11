@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	"github.com/dynoinc/skyvault/internal/sstable"
@@ -44,61 +45,65 @@ func TestHandler_Get(t *testing.T) {
 	// Test case 1: Get existing keys
 	req := connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath(objPath)
-	req.Msg.SetKeys([]string{"key1", "key3"})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"key1": {},
+		"key3": {},
+	})
 
 	resp, err := h.Get(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
 	// Verify the response
-	results := resp.Msg.GetResults()
-	require.Equal(t, 2, len(results))
+	found := resp.Msg.GetFound()
+	require.Equal(t, 2, len(found))
 
 	// Check first result - Should have found value
-	assert.True(t, results[0].HasFound())
-	assert.Equal(t, "value1", string(results[0].GetFound()))
+	assert.Equal(t, "value1", string(found["key1"]))
 
 	// Check second result - Should have found value
-	assert.True(t, results[1].HasFound())
-	assert.Equal(t, "value3", string(results[1].GetFound()))
+	assert.Equal(t, "value3", string(found["key3"]))
 
 	// Test case 2: Get tombstone key
 	req = connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath(objPath)
-	req.Msg.SetKeys([]string{"deleted-key"})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"deleted-key": {},
+	})
 
 	resp, err = h.Get(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
 	// Verify the response - should indicate deleted status
-	results = resp.Msg.GetResults()
-	require.Equal(t, 1, len(results))
-	assert.True(t, results[0].HasDeleted())
-	assert.True(t, results[0].GetDeleted())
+	deleted := resp.Msg.GetDeleted()
+	require.Equal(t, 1, len(deleted))
+	assert.Equal(t, deleted["deleted-key"], &emptypb.Empty{})
 
 	// Test case 3: Get non-existent key
 	req = connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath(objPath)
-	req.Msg.SetKeys([]string{"key4"})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"key4": {},
+	})
 
 	resp, err = h.Get(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	// Verify the response - should indicate not found
-	results = resp.Msg.GetResults()
-	require.Equal(t, 1, len(results))
-	assert.True(t, results[0].HasNotFound())
-	assert.True(t, results[0].GetNotFound())
+	// Verify the response does not contain the key in found or deleted
+	found = resp.Msg.GetFound()
+	require.Equal(t, 0, len(found))
+	deleted = resp.Msg.GetDeleted()
+	require.Equal(t, 0, len(deleted))
 
 	// Test case 4: Get mix of existing, deleted, and non-existent keys
 	req = connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath(objPath)
-	req.Msg.SetKeys([]string{
-		"key2",         // Exists
-		"deleted-key",  // Tombstone
-		"non-existent", // Not found
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"key2":         {},
+		"deleted-key":  {},
+		"non-existent": {},
 	})
 
 	resp, err = h.Get(ctx, req)
@@ -106,25 +111,27 @@ func TestHandler_Get(t *testing.T) {
 	require.NotNil(t, resp)
 
 	// Verify the response - should have three results with correct status types
-	results = resp.Msg.GetResults()
-	require.Equal(t, 3, len(results))
+	found = resp.Msg.GetFound()
+	require.Equal(t, 1, len(found))
 
 	// First key (key2) - should be found
-	assert.True(t, results[0].HasFound())
-	assert.Equal(t, "value2", string(results[0].GetFound()))
+	assert.Equal(t, "value2", string(found["key2"]))
 
 	// Second key (deleted-key) - should be marked as deleted
-	assert.True(t, results[1].HasDeleted())
-	assert.True(t, results[1].GetDeleted())
+	deleted = resp.Msg.GetDeleted()
+	require.Equal(t, 1, len(deleted))
+	assert.Equal(t, deleted["deleted-key"], &emptypb.Empty{})
 
-	// Third key (non-existent) - should be marked as not found
-	assert.True(t, results[2].HasNotFound())
-	assert.True(t, results[2].GetNotFound())
+	// Third key (non-existent) - should not be marked as found or deleted
+	assert.NotContains(t, found, "non-existent")
+	assert.NotContains(t, deleted, "non-existent")
 
 	// Test case 5: Get from non-existent object
 	req = connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath("non-existent-object")
-	req.Msg.SetKeys([]string{"key1"})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"key1": {},
+	})
 
 	_, err = h.Get(ctx, req)
 	require.Error(t, err)
@@ -132,7 +139,9 @@ func TestHandler_Get(t *testing.T) {
 
 	// Test case 6: Invalid request - empty object path
 	req = connect.NewRequest(&v1.GetRequest{})
-	req.Msg.SetKeys([]string{"key1"})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"key1": {},
+	})
 
 	_, err = h.Get(ctx, req)
 	require.Error(t, err)
@@ -141,7 +150,7 @@ func TestHandler_Get(t *testing.T) {
 	// Test case 7: Invalid request - no keys
 	req = connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath(objPath)
-	req.Msg.SetKeys([]string{})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{})
 
 	_, err = h.Get(ctx, req)
 	require.Error(t, err)
@@ -151,7 +160,9 @@ func TestHandler_Get(t *testing.T) {
 	// First request should have cached the object
 	req = connect.NewRequest(&v1.GetRequest{})
 	req.Msg.SetObjectPath(objPath)
-	req.Msg.SetKeys([]string{"key2"})
+	req.Msg.SetKeys(map[string]*emptypb.Empty{
+		"key2": {},
+	})
 
 	// Delete the object from the bucket to verify we're using the cache
 	err = bucket.Delete(ctx, objPath)
@@ -163,10 +174,9 @@ func TestHandler_Get(t *testing.T) {
 	require.NotNil(t, resp)
 
 	// Verify the response
-	results = resp.Msg.GetResults()
-	require.Equal(t, 1, len(results))
-	assert.True(t, results[0].HasFound())
-	assert.Equal(t, "value2", string(results[0].GetFound()))
+	found = resp.Msg.GetFound()
+	require.Equal(t, 1, len(found))
+	assert.Equal(t, "value2", string(found["key2"]))
 }
 
 func TestSizeBasedEviction(t *testing.T) {

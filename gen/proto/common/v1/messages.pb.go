@@ -21,79 +21,31 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type L0Batch_State int32
-
-const (
-	L0Batch_UNSPECIFIED L0Batch_State = 0
-	L0Batch_NEW         L0Batch_State = 1
-	L0Batch_MERGING     L0Batch_State = 2
-	L0Batch_MERGED      L0Batch_State = 3
-)
-
-// Enum value maps for L0Batch_State.
-var (
-	L0Batch_State_name = map[int32]string{
-		0: "UNSPECIFIED",
-		1: "NEW",
-		2: "MERGING",
-		3: "MERGED",
-	}
-	L0Batch_State_value = map[string]int32{
-		"UNSPECIFIED": 0,
-		"NEW":         1,
-		"MERGING":     2,
-		"MERGED":      3,
-	}
-)
-
-func (x L0Batch_State) Enum() *L0Batch_State {
-	p := new(L0Batch_State)
-	*p = x
-	return p
-}
-
-func (x L0Batch_State) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (L0Batch_State) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_common_v1_messages_proto_enumTypes[0].Descriptor()
-}
-
-func (L0Batch_State) Type() protoreflect.EnumType {
-	return &file_proto_common_v1_messages_proto_enumTypes[0]
-}
-
-func (x L0Batch_State) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-type L0Batch struct {
+type WriteAheadLog struct {
 	state                protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Path      string                 `protobuf:"bytes,1,opt,name=path"`
-	xxx_hidden_State     L0Batch_State          `protobuf:"varint,2,opt,name=state,enum=common.v1.L0Batch_State"`
-	xxx_hidden_CreatedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt"`
-	xxx_hidden_SizeBytes int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes"`
-	xxx_hidden_MinKey    string                 `protobuf:"bytes,5,opt,name=min_key,json=minKey"`
-	xxx_hidden_MaxKey    string                 `protobuf:"bytes,6,opt,name=max_key,json=maxKey"`
+	xxx_hidden_CreatedAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt"`
+	xxx_hidden_SizeBytes int64                  `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes"`
+	xxx_hidden_MinKey    string                 `protobuf:"bytes,4,opt,name=min_key,json=minKey"`
+	xxx_hidden_MaxKey    string                 `protobuf:"bytes,5,opt,name=max_key,json=maxKey"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
-func (x *L0Batch) Reset() {
-	*x = L0Batch{}
+func (x *WriteAheadLog) Reset() {
+	*x = WriteAheadLog{}
 	mi := &file_proto_common_v1_messages_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *L0Batch) String() string {
+func (x *WriteAheadLog) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*L0Batch) ProtoMessage() {}
+func (*WriteAheadLog) ProtoMessage() {}
 
-func (x *L0Batch) ProtoReflect() protoreflect.Message {
+func (x *WriteAheadLog) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_common_v1_messages_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -105,88 +57,76 @@ func (x *L0Batch) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *L0Batch) GetPath() string {
+func (x *WriteAheadLog) GetPath() string {
 	if x != nil {
 		return x.xxx_hidden_Path
 	}
 	return ""
 }
 
-func (x *L0Batch) GetState() L0Batch_State {
-	if x != nil {
-		return x.xxx_hidden_State
-	}
-	return L0Batch_UNSPECIFIED
-}
-
-func (x *L0Batch) GetCreatedAt() *timestamppb.Timestamp {
+func (x *WriteAheadLog) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_CreatedAt
 	}
 	return nil
 }
 
-func (x *L0Batch) GetSizeBytes() int64 {
+func (x *WriteAheadLog) GetSizeBytes() int64 {
 	if x != nil {
 		return x.xxx_hidden_SizeBytes
 	}
 	return 0
 }
 
-func (x *L0Batch) GetMinKey() string {
+func (x *WriteAheadLog) GetMinKey() string {
 	if x != nil {
 		return x.xxx_hidden_MinKey
 	}
 	return ""
 }
 
-func (x *L0Batch) GetMaxKey() string {
+func (x *WriteAheadLog) GetMaxKey() string {
 	if x != nil {
 		return x.xxx_hidden_MaxKey
 	}
 	return ""
 }
 
-func (x *L0Batch) SetPath(v string) {
+func (x *WriteAheadLog) SetPath(v string) {
 	x.xxx_hidden_Path = v
 }
 
-func (x *L0Batch) SetState(v L0Batch_State) {
-	x.xxx_hidden_State = v
-}
-
-func (x *L0Batch) SetCreatedAt(v *timestamppb.Timestamp) {
+func (x *WriteAheadLog) SetCreatedAt(v *timestamppb.Timestamp) {
 	x.xxx_hidden_CreatedAt = v
 }
 
-func (x *L0Batch) SetSizeBytes(v int64) {
+func (x *WriteAheadLog) SetSizeBytes(v int64) {
 	x.xxx_hidden_SizeBytes = v
 }
 
-func (x *L0Batch) SetMinKey(v string) {
+func (x *WriteAheadLog) SetMinKey(v string) {
 	x.xxx_hidden_MinKey = v
 }
 
-func (x *L0Batch) SetMaxKey(v string) {
+func (x *WriteAheadLog) SetMaxKey(v string) {
 	x.xxx_hidden_MaxKey = v
 }
 
-func (x *L0Batch) HasCreatedAt() bool {
+func (x *WriteAheadLog) HasCreatedAt() bool {
 	if x == nil {
 		return false
 	}
 	return x.xxx_hidden_CreatedAt != nil
 }
 
-func (x *L0Batch) ClearCreatedAt() {
+func (x *WriteAheadLog) ClearCreatedAt() {
 	x.xxx_hidden_CreatedAt = nil
 }
 
-type L0Batch_builder struct {
+type WriteAheadLog_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Path      string
-	State     L0Batch_State
 	CreatedAt *timestamppb.Timestamp
 	// Stats
 	SizeBytes int64
@@ -194,12 +134,11 @@ type L0Batch_builder struct {
 	MaxKey    string
 }
 
-func (b0 L0Batch_builder) Build() *L0Batch {
-	m0 := &L0Batch{}
+func (b0 WriteAheadLog_builder) Build() *WriteAheadLog {
+	m0 := &WriteAheadLog{}
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Path = b.Path
-	x.xxx_hidden_State = b.State
 	x.xxx_hidden_CreatedAt = b.CreatedAt
 	x.xxx_hidden_SizeBytes = b.SizeBytes
 	x.xxx_hidden_MinKey = b.MinKey
@@ -207,16 +146,73 @@ func (b0 L0Batch_builder) Build() *L0Batch {
 	return m0
 }
 
-type Partition struct {
+type Run struct {
 	state           protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Path string                 `protobuf:"bytes,1,opt,name=path"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+func (x *Run) Reset() {
+	*x = Run{}
+	mi := &file_proto_common_v1_messages_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Run) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Run) ProtoMessage() {}
+
+func (x *Run) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_common_v1_messages_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Run) GetPath() string {
+	if x != nil {
+		return x.xxx_hidden_Path
+	}
+	return ""
+}
+
+func (x *Run) SetPath(v string) {
+	x.xxx_hidden_Path = v
+}
+
+type Run_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Path string
+}
+
+func (b0 Run_builder) Build() *Run {
+	m0 := &Run{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Path = b.Path
+	return m0
+}
+
+type Partition struct {
+	state           protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Runs *[]*Run                `protobuf:"bytes,1,rep,name=runs"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
 func (x *Partition) Reset() {
 	*x = Partition{}
-	mi := &file_proto_common_v1_messages_proto_msgTypes[1]
+	mi := &file_proto_common_v1_messages_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -228,7 +224,7 @@ func (x *Partition) String() string {
 func (*Partition) ProtoMessage() {}
 
 func (x *Partition) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_v1_messages_proto_msgTypes[1]
+	mi := &file_proto_common_v1_messages_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -239,29 +235,30 @@ func (x *Partition) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *Partition) GetPath() string {
+func (x *Partition) GetRuns() []*Run {
 	if x != nil {
-		return x.xxx_hidden_Path
+		if x.xxx_hidden_Runs != nil {
+			return *x.xxx_hidden_Runs
+		}
 	}
-	return ""
+	return nil
 }
 
-func (x *Partition) SetPath(v string) {
-	x.xxx_hidden_Path = v
+func (x *Partition) SetRuns(v []*Run) {
+	x.xxx_hidden_Runs = &v
 }
 
 type Partition_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	// TODO: Represent a full LSM tree with indexes here.
-	Path string
+	Runs []*Run
 }
 
 func (b0 Partition_builder) Build() *Partition {
 	m0 := &Partition{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_Path = b.Path
+	x.xxx_hidden_Runs = &b.Runs
 	return m0
 }
 
@@ -272,44 +269,39 @@ var file_proto_common_v1_messages_proto_rawDesc = string([]byte{
 	0x31, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x12, 0x09, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x1a, 0x1f, 0x67, 0x6f, 0x6f,
 	0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d,
-	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x95, 0x02, 0x0a,
-	0x07, 0x4c, 0x30, 0x42, 0x61, 0x74, 0x63, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x2e, 0x0a, 0x05,
-	0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x18, 0x2e, 0x63, 0x6f,
-	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x30, 0x42, 0x61, 0x74, 0x63, 0x68, 0x2e,
-	0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x12, 0x39, 0x0a, 0x0a,
-	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
-	0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x63, 0x72,
-	0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x69, 0x7a, 0x65, 0x5f,
-	0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x73, 0x69, 0x7a,
-	0x65, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12, 0x17, 0x0a, 0x07, 0x6d, 0x69, 0x6e, 0x5f, 0x6b, 0x65,
-	0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x69, 0x6e, 0x4b, 0x65, 0x79, 0x12,
-	0x17, 0x0a, 0x07, 0x6d, 0x61, 0x78, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x06, 0x6d, 0x61, 0x78, 0x4b, 0x65, 0x79, 0x22, 0x3a, 0x0a, 0x05, 0x53, 0x74, 0x61, 0x74,
-	0x65, 0x12, 0x0f, 0x0a, 0x0b, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44,
-	0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x4e, 0x45, 0x57, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x4d,
-	0x45, 0x52, 0x47, 0x49, 0x4e, 0x47, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x4d, 0x45, 0x52, 0x47,
-	0x45, 0x44, 0x10, 0x03, 0x22, 0x1f, 0x0a, 0x09, 0x50, 0x61, 0x72, 0x74, 0x69, 0x74, 0x69, 0x6f,
-	0x6e, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x04, 0x70, 0x61, 0x74, 0x68, 0x42, 0x36, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x79, 0x6e, 0x6f, 0x69, 0x6e, 0x63, 0x2f, 0x73, 0x6b, 0x79, 0x76,
-	0x61, 0x75, 0x6c, 0x74, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63,
-	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0x92, 0x03, 0x02, 0x08, 0x02, 0x62, 0x08, 0x65,
-	0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
+	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xaf, 0x01, 0x0a,
+	0x0d, 0x57, 0x72, 0x69, 0x74, 0x65, 0x41, 0x68, 0x65, 0x61, 0x64, 0x4c, 0x6f, 0x67, 0x12, 0x12,
+	0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61,
+	0x74, 0x68, 0x12, 0x39, 0x0a, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
+	0x6d, 0x70, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1d, 0x0a,
+	0x0a, 0x73, 0x69, 0x7a, 0x65, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x09, 0x73, 0x69, 0x7a, 0x65, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12, 0x17, 0x0a, 0x07,
+	0x6d, 0x69, 0x6e, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6d,
+	0x69, 0x6e, 0x4b, 0x65, 0x79, 0x12, 0x17, 0x0a, 0x07, 0x6d, 0x61, 0x78, 0x5f, 0x6b, 0x65, 0x79,
+	0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x61, 0x78, 0x4b, 0x65, 0x79, 0x22, 0x19,
+	0x0a, 0x03, 0x52, 0x75, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x22, 0x2f, 0x0a, 0x09, 0x50, 0x61, 0x72,
+	0x74, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x22, 0x0a, 0x04, 0x72, 0x75, 0x6e, 0x73, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x76, 0x31,
+	0x2e, 0x52, 0x75, 0x6e, 0x52, 0x04, 0x72, 0x75, 0x6e, 0x73, 0x42, 0x36, 0x5a, 0x2f, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x64, 0x79, 0x6e, 0x6f, 0x69, 0x6e, 0x63,
+	0x2f, 0x73, 0x6b, 0x79, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x76, 0x31, 0x92, 0x03, 0x02,
+	0x08, 0x02, 0x62, 0x08, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
 })
 
-var file_proto_common_v1_messages_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_common_v1_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_common_v1_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_common_v1_messages_proto_goTypes = []any{
-	(L0Batch_State)(0),            // 0: common.v1.L0Batch.State
-	(*L0Batch)(nil),               // 1: common.v1.L0Batch
+	(*WriteAheadLog)(nil),         // 0: common.v1.WriteAheadLog
+	(*Run)(nil),                   // 1: common.v1.Run
 	(*Partition)(nil),             // 2: common.v1.Partition
 	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
 var file_proto_common_v1_messages_proto_depIdxs = []int32{
-	0, // 0: common.v1.L0Batch.state:type_name -> common.v1.L0Batch.State
-	3, // 1: common.v1.L0Batch.created_at:type_name -> google.protobuf.Timestamp
+	3, // 0: common.v1.WriteAheadLog.created_at:type_name -> google.protobuf.Timestamp
+	1, // 1: common.v1.Partition.runs:type_name -> common.v1.Run
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -327,14 +319,13 @@ func file_proto_common_v1_messages_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_common_v1_messages_proto_rawDesc), len(file_proto_common_v1_messages_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   2,
+			NumEnums:      0,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_common_v1_messages_proto_goTypes,
 		DependencyIndexes: file_proto_common_v1_messages_proto_depIdxs,
-		EnumInfos:         file_proto_common_v1_messages_proto_enumTypes,
 		MessageInfos:      file_proto_common_v1_messages_proto_msgTypes,
 	}.Build()
 	File_proto_common_v1_messages_proto = out.File

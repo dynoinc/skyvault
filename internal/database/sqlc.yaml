@@ -14,15 +14,21 @@ sql:
         output_db_file_name: "sqlc_db.go"
         output_querier_file_name: "sqlc_querier.go"
         overrides:
-          - column: "l0_batches.attrs"
+          - column: "write_ahead_logs.attrs"
             go_type:
               import: "github.com/dynoinc/skyvault/gen/proto/common/v1"
               package: "v1"
-              type: "L0Batch"
+              type: "WriteAheadLog"
               pointer: true
           - column: "partitions.attrs"
             go_type:
               import: "github.com/dynoinc/skyvault/gen/proto/common/v1"
               package: "v1"
               type: "Partition"
+              pointer: true
+          - column: "shared_runs.attrs"
+            go_type:
+              import: "github.com/dynoinc/skyvault/gen/proto/common/v1"
+              package: "v1"
+              type: "Run"
               pointer: true

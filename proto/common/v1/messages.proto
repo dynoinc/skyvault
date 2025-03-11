@@ -8,25 +8,20 @@ option features.field_presence = IMPLICIT;
 
 import "google/protobuf/timestamp.proto";
 
-message L0Batch {
-  enum State {
-    UNSPECIFIED = 0;
-    NEW = 1;
-    MERGING = 2;
-    MERGED = 3;
-  }
-
+message WriteAheadLog {
   string path = 1;
-  State state = 2;
-  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp created_at = 2;
 
   // Stats
-  int64 size_bytes = 4;
-  string min_key = 5;
-  string max_key = 6;
+  int64 size_bytes = 3;
+  string min_key = 4;
+  string max_key = 5;
+}
+
+message Run {
+  string path = 1;
 }
 
 message Partition {
-  // TODO: Represent a full LSM tree with indexes here.
-  string path = 1;
+  repeated Run runs = 1;
 }

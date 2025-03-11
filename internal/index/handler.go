@@ -12,8 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/cespare/xxhash/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tidwall/btree"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -22,7 +21,6 @@ import (
 
 	cachev1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	cachev1connect "github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
-	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	v1 "github.com/dynoinc/skyvault/gen/proto/index/v1"
 	"github.com/dynoinc/skyvault/gen/proto/index/v1/v1connect"
 	"github.com/dynoinc/skyvault/internal/database"
@@ -56,11 +54,14 @@ type handler struct {
 	ring         *consistentRing
 	cacheClients map[string]cachev1connect.CacheServiceClient
 
-	// L0 batches
-	l0Batches atomic.Pointer[[]database.L0Batch]
+	// WALs
+	wals atomic.Pointer[[]database.WriteAheadLog]
+
+	// Shared runs
+	sharedRuns atomic.Pointer[[]database.SharedRun]
 
 	// Partitions
-	partitions atomic.Pointer[btree.Map[string, *commonv1.Partition]]
+	partitions atomic.Pointer[[]database.Partition]
 
 	// Kubernetes client for discovering cache service pods
 	kubeClient kubernetes.Interface
@@ -148,9 +149,14 @@ func NewHandler(
 		return nil, fmt.Errorf("failed to watch cache services: %w", err)
 	}
 
-	// Start watching for l0_batches
-	if err := h.watchL0Batches(ctx, db); err != nil {
-		return nil, fmt.Errorf("failed to watch l0_batches: %w", err)
+	// Start watching for WALs
+	if err := h.watchWALs(ctx, db); err != nil {
+		return nil, fmt.Errorf("failed to watch WALs: %w", err)
+	}
+
+	// Start watching for shared runs
+	if err := h.watchSharedRuns(ctx, db); err != nil {
+		return nil, fmt.Errorf("failed to watch shared runs: %w", err)
 	}
 
 	// Start watching for partitions
@@ -240,117 +246,73 @@ func (h *handler) watchCacheServices(ctx context.Context) error {
 }
 
 // watchL0Batches watches for changes in the l0_batches
-func (h *handler) watchL0Batches(ctx context.Context, db *pgxpool.Pool) error {
-	l0Batches, err := database.New(db).GetL0Batches(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get l0_batches: %w", err)
-	}
-
-	conn, err := db.Acquire(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to acquire db conn: %w", err)
-	}
-
-	_, err = conn.Exec(ctx, "LISTEN new_l0_batch")
-	if err != nil {
-		return fmt.Errorf("failed to listen for notifications: %w", err)
-	}
-
-	// Sort the l0 batches by SeqNo, highest first (newest first)
-	sort.Slice(l0Batches, func(i, j int) bool {
-		return l0Batches[i].SeqNo > l0Batches[j].SeqNo
-	})
-
-	h.l0Batches.Store(&l0Batches)
-
-	go func() {
-		defer conn.Release()
-
-		for {
-			notification, err := conn.Conn().WaitForNotification(ctx)
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-
-				slog.ErrorContext(ctx, "error waiting for notification", "error", err)
-				continue
-			}
-
-			// Get updated l0 batches
-			l0Batches, err := database.New(db).GetL0Batches(ctx)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to get l0 batches after notification", "error", err)
-				continue
-			}
-
-			// Sort the l0 batches by SeqNo, highest first (newest first)
-			sort.Slice(l0Batches, func(i, j int) bool {
-				return l0Batches[i].SeqNo > l0Batches[j].SeqNo
-			})
-
-			h.l0Batches.Store(&l0Batches)
-
-			slog.InfoContext(ctx, "updated l0 batches from notification", "payload", notification.Payload, "count", len(l0Batches))
+func (h *handler) watchWALs(ctx context.Context, db *pgxpool.Pool) error {
+	updateFn := func() error {
+		wals, err := database.New(db).GetWriteAheadLogs(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get WALs: %w", err)
 		}
-	}()
+
+		// Sort the wals by SeqNo, highest first (newest first)
+		sort.Slice(wals, func(i, j int) bool {
+			return wals[i].SeqNo > wals[j].SeqNo
+		})
+
+		h.wals.Store(&wals)
+		return nil
+	}
+
+	if err := database.Watch(ctx, db, "new_write_ahead_log", updateFn); err != nil {
+		return fmt.Errorf("failed to watch WALs: %w", err)
+	}
+
+	return nil
+}
+
+// watchSharedRuns watches for changes in the shared runs
+func (h *handler) watchSharedRuns(ctx context.Context, db *pgxpool.Pool) error {
+	updateFn := func() error {
+		sharedRuns, err := database.New(db).GetSharedRuns(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get shared runs: %w", err)
+		}
+
+		// Sort the shared runs by SeqNo, highest first (newest first)
+		sort.Slice(sharedRuns, func(i, j int) bool {
+			return sharedRuns[i].SeqNo > sharedRuns[j].SeqNo
+		})
+
+		h.sharedRuns.Store(&sharedRuns)
+		return nil
+	}
+
+	if err := database.Watch(ctx, db, "shared_run_change", updateFn); err != nil {
+		return fmt.Errorf("failed to watch shared runs: %w", err)
+	}
 
 	return nil
 }
 
 // watchPartitions watches for changes in the partitions
 func (h *handler) watchPartitions(ctx context.Context, db *pgxpool.Pool) error {
-	partitions, err := database.New(db).GetPartitions(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get partitions: %w", err)
-	}
-
-	conn, err := db.Acquire(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to acquire db conn: %w", err)
-	}
-
-	_, err = conn.Exec(ctx, "LISTEN new_partition")
-	if err != nil {
-		return fmt.Errorf("failed to listen for notifications: %w", err)
-	}
-
-	var tree btree.Map[string, *commonv1.Partition]
-	for _, partition := range partitions {
-		tree.Set(partition.InclusiveStartKey, partition.Attrs)
-	}
-
-	h.partitions.Store(&tree)
-
-	go func() {
-		defer conn.Release()
-
-		for {
-			notification, err := conn.Conn().WaitForNotification(ctx)
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-
-				slog.ErrorContext(ctx, "error waiting for notification", "error", err)
-				continue
-			}
-
-			partitions, err := database.New(db).GetPartitions(ctx)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to get partitions after notification", "error", err)
-				continue
-			}
-
-			var tree btree.Map[string, *commonv1.Partition]
-			for _, partition := range partitions {
-				tree.Set(partition.InclusiveStartKey, partition.Attrs)
-			}
-
-			h.partitions.Store(&tree)
-			slog.InfoContext(ctx, "updated partitions from notification", "payload", notification.Payload, "count", len(partitions))
+	updateFn := func() error {
+		partitions, err := database.New(db).GetPartitions(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get partitions: %w", err)
 		}
-	}()
+
+		// Sort the partitions by InclusiveStartKey
+		sort.Slice(partitions, func(i, j int) bool {
+			return partitions[i].InclusiveStartKey < partitions[j].InclusiveStartKey
+		})
+
+		h.partitions.Store(&partitions)
+		return nil
+	}
+
+	if err := database.Watch(ctx, db, "partition_change", updateFn); err != nil {
+		return fmt.Errorf("failed to watch partitions: %w", err)
+	}
 
 	return nil
 }
@@ -394,210 +356,134 @@ func (h *handler) getClients(path string) ([]cachev1connect.CacheServiceClient, 
 	return clients, nil
 }
 
+func (h *handler) lookupSSTable(ctx context.Context, keys map[string]*emptypb.Empty, path string) (*cachev1.GetResponse, error) {
+	clients, err := h.getClients(path)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheReq := connect.NewRequest(&cachev1.GetRequest{})
+	cacheReq.Msg.SetObjectPath(path)
+	cacheReq.Msg.SetKeys(keys)
+
+	var resp *connect.Response[cachev1.GetResponse]
+	var lastErr error
+
+	for _, client := range clients {
+		var err error
+		resp, err = client.Get(ctx, cacheReq)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		// Success
+		lastErr = nil
+		break
+	}
+
+	if lastErr != nil {
+		// Return an error since we're unable to process this batch
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for path %s: %w", path, lastErr))
+	}
+
+	return resp.Msg, nil
+}
+
 // Get retrieves values for requested keys by checking all l0_batches
 func (h *handler) BatchGet(
 	ctx context.Context,
 	req *connect.Request[v1.BatchGetRequest],
 ) (*connect.Response[v1.BatchGetResponse], error) {
-	keys := req.Msg.GetKeys()
-	if len(keys) == 0 {
-		return connect.NewResponse(&v1.BatchGetResponse{}), nil
+	var empty = &emptypb.Empty{}
+	remainingKeys := make(map[string]*emptypb.Empty)
+	for _, key := range req.Msg.GetKeys() {
+		remainingKeys[key] = empty
 	}
 
-	l0Batches := *h.l0Batches.Load()
+	resp := make(map[string][]byte, len(remainingKeys))
 
-	// Track which keys we've found
-	remainingKeys := make(map[string]string)
-	for _, key := range keys {
-		remainingKeys[key] = key
-	}
-
-	// Results storage - map of results keyed by string key
-	resultsByKey := make(map[string]*v1.Result, len(keys))
-
-	// Check each batch for the keys we need
-	for _, batch := range l0Batches {
-		// If we've found all keys, stop searching
+	// First check WAL
+	for _, wal := range *h.wals.Load() {
 		if len(remainingKeys) == 0 {
 			break
 		}
 
-		// Prepare the keys we still need to look for
-		keysToFind := make([]string, 0, len(remainingKeys))
-		for key := range remainingKeys {
-			keysToFind = append(keysToFind, key)
-		}
-		// Sort keys for deterministic order
-		sort.Strings(keysToFind)
-
-		clients, err := h.getClients(batch.Attrs.GetPath())
+		pr, err := h.lookupSSTable(ctx, remainingKeys, wal.Attrs.GetPath())
 		if err != nil {
 			return nil, err
 		}
 
-		cacheReq := connect.NewRequest(&cachev1.GetRequest{})
-		cacheReq.Msg.SetObjectPath(batch.Attrs.GetPath())
-		cacheReq.Msg.SetKeys(keysToFind)
+		for key, result := range pr.GetFound() {
+			resp[key] = result
+			delete(remainingKeys, key)
+		}
 
-		var resp *connect.Response[cachev1.GetResponse]
-		var lastErr error
+		for key := range pr.GetDeleted() {
+			delete(remainingKeys, key)
+		}
+	}
 
-		for _, client := range clients {
-			var err error
-			resp, err = client.Get(ctx, cacheReq)
+	// Then check shared runs
+	if len(remainingKeys) > 0 {
+		for _, sharedRun := range *h.sharedRuns.Load() {
+			pr, err := h.lookupSSTable(ctx, remainingKeys, sharedRun.Attrs.GetPath())
 			if err != nil {
-				lastErr = err
-				continue
+				return nil, err
 			}
 
-			// Success
-			lastErr = nil
-			break
-		}
-
-		if lastErr != nil {
-			// Return an error since we're unable to process this batch
-			return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for path %s: %w", batch.Attrs.GetPath(), lastErr))
-		}
-
-		// Process the results
-		cacheResults := resp.Msg.GetResults()
-		for i, cacheResult := range cacheResults {
-			key := keysToFind[i]
-
-			// Create an index result from the cache result
-			indexResult := &v1.Result{}
-
-			// Record this result based on the status
-			if cacheResult.HasFound() {
-				// Key found with a value - store it and remove from remaining
-				indexResult.SetFound(cacheResult.GetFound())
-				resultsByKey[key] = indexResult
+			for key, result := range pr.GetFound() {
+				resp[key] = result
 				delete(remainingKeys, key)
-			} else if cacheResult.HasDeleted() {
-				// Key has a tombstone - store it as not found and remove from remaining
-				// Tombstones in newer batches take precedence over older values
-				indexResult.SetNotFound(true)
-				resultsByKey[key] = indexResult
+			}
+
+			for key := range pr.GetDeleted() {
 				delete(remainingKeys, key)
-			} else if cacheResult.HasNotFound() {
-				// Key was not found in this batch
-				// Continue searching in older batches - don't remove from remainingKeys
-				continue
 			}
 		}
 	}
 
+	// Then check partitions
 	if len(remainingKeys) > 0 {
 		partitions := *h.partitions.Load()
 
 		// Create requests for each group of keys in the same partition
-		reqs := make(map[string][]string)
+		reqs := make(map[int]map[string]*emptypb.Empty)
 		for key := range remainingKeys {
-			found := false
-			partitions.Descend(key, func(pk string, pv *commonv1.Partition) bool {
-				reqs[pk] = append(reqs[pk], key)
-				found = true
-				return false
+			i := sort.Search(len(partitions), func(i int) bool {
+				return partitions[i].InclusiveStartKey > key
 			})
-
-			if !found {
+			if i == 0 {
 				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("key %q not found in any partition", key))
 			}
+			if _, ok := reqs[i-1]; !ok {
+				reqs[i-1] = make(map[string]*emptypb.Empty)
+			}
+			reqs[i-1][key] = empty
 		}
 
-		for pk, keys := range reqs {
-			pv, ok := partitions.Get(pk)
-			if !ok {
-				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("partition %q not found", pk))
-			}
+		for idx := range reqs {
+			p := partitions[idx]
 
-			path := pv.GetPath()
-			if path == "" {
-				// partition has not data, mark all the keys as not found
-				for _, key := range keys {
-					resultsByKey[key] = v1.Result_builder{
-						NotFound: proto.Bool(true),
-					}.Build()
-				}
-				continue
-			}
-
-			clients, err := h.getClients(path)
-			if err != nil {
-				return nil, err
-			}
-			cacheReq := connect.NewRequest(&cachev1.GetRequest{})
-			cacheReq.Msg.SetObjectPath(path)
-			cacheReq.Msg.SetKeys(keys)
-
-			var resp *connect.Response[cachev1.GetResponse]
-			var lastErr error
-
-			for _, client := range clients {
-				var err error
-				resp, err = client.Get(ctx, cacheReq)
+			for _, run := range p.Attrs.GetRuns() {
+				pr, err := h.lookupSSTable(ctx, reqs[idx], run.GetPath())
 				if err != nil {
-					lastErr = err
-					continue
+					return nil, err
 				}
 
-				// Success
-				lastErr = nil
-				break
-			}
-
-			if lastErr != nil {
-				// Return an error since we're unable to process this batch
-				return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("cache services unavailable for path %s: %w", path, lastErr))
-			}
-
-			// Process the results
-			cacheResults := resp.Msg.GetResults()
-			for i, cacheResult := range cacheResults {
-				key := keys[i]
-
-				// Create an index result from the cache result
-				indexResult := &v1.Result{}
-
-				// Record this result based on the status
-				if cacheResult.HasFound() {
-					// Key found with a value - store it and remove from remaining
-					indexResult.SetFound(cacheResult.GetFound())
-					resultsByKey[key] = indexResult
+				for key, result := range pr.GetFound() {
+					resp[key] = result
 					delete(remainingKeys, key)
-				} else if cacheResult.HasDeleted() {
-					// Key has a tombstone - store it as not found and remove from remaining
-					// Tombstones in newer batches take precedence over older values
-					indexResult.SetNotFound(true)
-					resultsByKey[key] = indexResult
+				}
+
+				for key := range pr.GetDeleted() {
 					delete(remainingKeys, key)
-				} else if cacheResult.HasNotFound() {
-					// Key was not found in this batch
-					// Continue searching in older batches - don't remove from remainingKeys
-					continue
 				}
 			}
 		}
 	}
 
-	// Create the final results array in same order as requested keys
-	results := make([]*v1.Result, 0, len(keys))
-	for _, key := range keys {
-		if result, found := resultsByKey[key]; found {
-			// We found this key in one of the batches
-			results = append(results, result)
-		} else {
-			// Key was not found in any batch
-			notFound := &v1.Result{}
-			notFound.SetNotFound(true)
-			results = append(results, notFound)
-		}
-	}
-
-	// Create the response
-	resp := &v1.BatchGetResponse{}
-	resp.SetResults(results)
-
-	return connect.NewResponse(resp), nil
+	return connect.NewResponse(v1.BatchGetResponse_builder{
+		Results: resp,
+	}.Build()), nil
 }

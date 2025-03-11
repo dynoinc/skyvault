@@ -33,14 +33,14 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// OrchestratorServiceListL0BatchesProcedure is the fully-qualified name of the
-	// OrchestratorService's ListL0Batches RPC.
-	OrchestratorServiceListL0BatchesProcedure = "/orchestrator.v1.OrchestratorService/ListL0Batches"
+	// OrchestratorServiceListWriteAheadLogsProcedure is the fully-qualified name of the
+	// OrchestratorService's ListWriteAheadLogs RPC.
+	OrchestratorServiceListWriteAheadLogsProcedure = "/orchestrator.v1.OrchestratorService/ListWriteAheadLogs"
 )
 
 // OrchestratorServiceClient is a client for the orchestrator.v1.OrchestratorService service.
 type OrchestratorServiceClient interface {
-	ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error)
+	ListWriteAheadLogs(context.Context, *connect.Request[v1.ListWriteAheadLogsRequest]) (*connect.Response[v1.ListWriteAheadLogsResponse], error)
 }
 
 // NewOrchestratorServiceClient constructs a client for the orchestrator.v1.OrchestratorService
@@ -54,10 +54,10 @@ func NewOrchestratorServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	orchestratorServiceMethods := v1.File_proto_orchestrator_v1_service_proto.Services().ByName("OrchestratorService").Methods()
 	return &orchestratorServiceClient{
-		listL0Batches: connect.NewClient[v1.ListL0BatchesRequest, v1.ListL0BatchesResponse](
+		listWriteAheadLogs: connect.NewClient[v1.ListWriteAheadLogsRequest, v1.ListWriteAheadLogsResponse](
 			httpClient,
-			baseURL+OrchestratorServiceListL0BatchesProcedure,
-			connect.WithSchema(orchestratorServiceMethods.ByName("ListL0Batches")),
+			baseURL+OrchestratorServiceListWriteAheadLogsProcedure,
+			connect.WithSchema(orchestratorServiceMethods.ByName("ListWriteAheadLogs")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -65,18 +65,18 @@ func NewOrchestratorServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // orchestratorServiceClient implements OrchestratorServiceClient.
 type orchestratorServiceClient struct {
-	listL0Batches *connect.Client[v1.ListL0BatchesRequest, v1.ListL0BatchesResponse]
+	listWriteAheadLogs *connect.Client[v1.ListWriteAheadLogsRequest, v1.ListWriteAheadLogsResponse]
 }
 
-// ListL0Batches calls orchestrator.v1.OrchestratorService.ListL0Batches.
-func (c *orchestratorServiceClient) ListL0Batches(ctx context.Context, req *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error) {
-	return c.listL0Batches.CallUnary(ctx, req)
+// ListWriteAheadLogs calls orchestrator.v1.OrchestratorService.ListWriteAheadLogs.
+func (c *orchestratorServiceClient) ListWriteAheadLogs(ctx context.Context, req *connect.Request[v1.ListWriteAheadLogsRequest]) (*connect.Response[v1.ListWriteAheadLogsResponse], error) {
+	return c.listWriteAheadLogs.CallUnary(ctx, req)
 }
 
 // OrchestratorServiceHandler is an implementation of the orchestrator.v1.OrchestratorService
 // service.
 type OrchestratorServiceHandler interface {
-	ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error)
+	ListWriteAheadLogs(context.Context, *connect.Request[v1.ListWriteAheadLogsRequest]) (*connect.Response[v1.ListWriteAheadLogsResponse], error)
 }
 
 // NewOrchestratorServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -86,16 +86,16 @@ type OrchestratorServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewOrchestratorServiceHandler(svc OrchestratorServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	orchestratorServiceMethods := v1.File_proto_orchestrator_v1_service_proto.Services().ByName("OrchestratorService").Methods()
-	orchestratorServiceListL0BatchesHandler := connect.NewUnaryHandler(
-		OrchestratorServiceListL0BatchesProcedure,
-		svc.ListL0Batches,
-		connect.WithSchema(orchestratorServiceMethods.ByName("ListL0Batches")),
+	orchestratorServiceListWriteAheadLogsHandler := connect.NewUnaryHandler(
+		OrchestratorServiceListWriteAheadLogsProcedure,
+		svc.ListWriteAheadLogs,
+		connect.WithSchema(orchestratorServiceMethods.ByName("ListWriteAheadLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/orchestrator.v1.OrchestratorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case OrchestratorServiceListL0BatchesProcedure:
-			orchestratorServiceListL0BatchesHandler.ServeHTTP(w, r)
+		case OrchestratorServiceListWriteAheadLogsProcedure:
+			orchestratorServiceListWriteAheadLogsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -105,6 +105,6 @@ func NewOrchestratorServiceHandler(svc OrchestratorServiceHandler, opts ...conne
 // UnimplementedOrchestratorServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedOrchestratorServiceHandler struct{}
 
-func (UnimplementedOrchestratorServiceHandler) ListL0Batches(context.Context, *connect.Request[v1.ListL0BatchesRequest]) (*connect.Response[v1.ListL0BatchesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("orchestrator.v1.OrchestratorService.ListL0Batches is not implemented"))
+func (UnimplementedOrchestratorServiceHandler) ListWriteAheadLogs(context.Context, *connect.Request[v1.ListWriteAheadLogsRequest]) (*connect.Response[v1.ListWriteAheadLogsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("orchestrator.v1.OrchestratorService.ListWriteAheadLogs is not implemented"))
 }

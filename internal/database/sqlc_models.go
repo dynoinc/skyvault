@@ -6,15 +6,27 @@ package database
 
 import (
 	v1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type L0Batch struct {
-	SeqNo   int64
-	Version int32
-	Attrs   *v1.L0Batch
+type Job struct {
+	ID    pgtype.UUID
+	State string
+	Attrs []byte
 }
 
 type Partition struct {
 	InclusiveStartKey string
 	Attrs             *v1.Partition
+}
+
+type SharedRun struct {
+	SeqNo int64
+	Attrs *v1.Run
+}
+
+type WriteAheadLog struct {
+	SeqNo int64
+	State string
+	Attrs *v1.WriteAheadLog
 }

@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	v1 "github.com/dynoinc/skyvault/gen/proto/cache/v1"
 	"github.com/dynoinc/skyvault/gen/proto/cache/v1/v1connect"
@@ -133,57 +134,27 @@ func (h *handler) Get(
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("error retrieving object: %w", err))
 	}
 
-	// Create a map to track which keys we're looking for
-	keyMap := make(map[string]bool, len(keys))
-	for _, key := range keys {
-		keyMap[key] = true
-	}
-
-	// Create results for each requested key
-	results := make([]*v1.Result, 0, len(keys))
-	foundMap := make(map[string]*v1.Result, len(keys))
+	empty := &emptypb.Empty{}
+	found := make(map[string][]byte, len(keys))
+	deleted := make(map[string]*emptypb.Empty, len(keys))
 
 	// Iterate through the records
 	for record := range sstable.Records(data) {
 		recordKeyStr := record.Key
-		if keyMap[recordKeyStr] {
+		if _, ok := keys[recordKeyStr]; ok {
 			// Create a result for this key
-			result := &v1.Result{}
 			if record.Tombstone {
-				result.SetDeleted(true)
+				deleted[recordKeyStr] = empty
 			} else {
-				result.SetFound(record.Value)
-			}
-
-			// Store the result for this key
-			foundMap[recordKeyStr] = result
-
-			// Remove from the keyMap so we don't process it again
-			delete(keyMap, recordKeyStr)
-
-			// If we've found all keys, we can stop
-			if len(keyMap) == 0 {
-				break
+				found[recordKeyStr] = record.Value
 			}
 		}
 	}
 
-	// Create results in the same order as the requested keys
-	for _, key := range keys {
-		if result, found := foundMap[key]; found {
-			results = append(results, result)
-		} else {
-			// Key not found in the object
-			notFound := &v1.Result{}
-			notFound.SetNotFound(true)
-			results = append(results, notFound)
-		}
-	}
-
-	// Create response with results
-	resp := &v1.GetResponse{}
-	resp.SetResults(results)
-	return connect.NewResponse(resp), nil
+	return connect.NewResponse(v1.GetResponse_builder{
+		Found:   found,
+		Deleted: deleted,
+	}.Build()), nil
 }
 
 // getObjectData retrieves the object data from cache or object store

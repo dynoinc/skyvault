@@ -8,12 +8,22 @@ import (
 )
 
 // MarshalJSON implements json.Marshaler
-func (msg *L0Batch) MarshalJSON() ([]byte, error) {
+func (msg *WriteAheadLog) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *L0Batch) UnmarshalJSON(b []byte) error {
+func (msg *WriteAheadLog) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *Run) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *Run) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 

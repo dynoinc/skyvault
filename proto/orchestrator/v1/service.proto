@@ -9,18 +9,17 @@ option features.field_presence = IMPLICIT;
 import "proto/common/v1/messages.proto";
 
 service OrchestratorService {
-  rpc ListL0Batches(ListL0BatchesRequest) returns (ListL0BatchesResponse);
+  rpc ListWriteAheadLogs(ListWriteAheadLogsRequest) returns (ListWriteAheadLogsResponse);
 }
 
-message ListL0BatchesRequest {
+message ListWriteAheadLogsRequest {
 }
 
-message ListL0BatchesResponse {
-  repeated L0Batch l0_batches = 1;
+message ListWriteAheadLogsResponse {
+  repeated WriteAheadLog write_ahead_logs = 1;
 }
 
-message L0Batch {
+message WriteAheadLog {
   int64 seq_no = 1;
-  int32 version = 2;
-  common.v1.L0Batch attrs = 3;
+  common.v1.WriteAheadLog attrs = 2;
 }

@@ -382,22 +382,6 @@ func stressIndex(ctx context.Context, cfg config, target string, m *metrics, act
 	fmt.Printf("Testing index with %d written keys, %d deleted keys, and %d unwritten keys\n",
 		len(writtenKeysList), len(deletedKeysList), len(unwrittenKeys))
 
-	// Function to verify the correctness of the result
-	verifyResult := func(key string, result *indexv1.Result) bool {
-		// Check if key is in written list
-		isWritten := actualWrittenKeys[key]
-
-		// Check if key is in deleted list
-		isDeleted := actualDeletedKeys[key]
-
-		// Verify the result is as expected
-		if isWritten && !isDeleted {
-			return result.HasFound()
-		} else {
-			return result.HasNotFound()
-		}
-	}
-
 	// For tracking issues with verification
 	var verificationErrorCount int64
 	var incorrectWritten int64
@@ -513,52 +497,16 @@ func stressIndex(ctx context.Context, cfg config, target string, m *metrics, act
 						allCorrect := true
 						incorrectCount := 0
 
-						if len(results) != len(keys) {
-							// Number of results doesn't match number of keys
-							allCorrect = false
-							incorrectCount = len(keys) - len(results)
-							if incorrectCount < 0 {
-								incorrectCount = 0
-							}
-						} else {
-							for i, result := range results {
-								if !verifyResult(keys[i], result) {
+						for _, key := range keys {
+							if actualWrittenKeys[key] && !actualDeletedKeys[key] {
+								if _, ok := results[key]; !ok {
 									allCorrect = false
 									incorrectCount++
-
-									// Track details about the verification failure for debugging
-									if cfg.Debug {
-										keyStatus := "unknown"
-										resultStatus := "unknown"
-
-										// Determine expected status
-										if actualWrittenKeys[keys[i]] && !actualDeletedKeys[keys[i]] {
-											keyStatus = "written"
-											mutex.Lock()
-											incorrectWritten++
-											mutex.Unlock()
-										} else if actualDeletedKeys[keys[i]] {
-											keyStatus = "deleted"
-											mutex.Lock()
-											incorrectDeleted++
-											mutex.Unlock()
-										} else {
-											keyStatus = "notfound"
-											mutex.Lock()
-											incorrectNotFound++
-											mutex.Unlock()
-										}
-
-										// Determine actual result
-										if result.HasFound() {
-											resultStatus = "found"
-										} else if result.HasNotFound() {
-											resultStatus = "notfound"
-										}
-
-										fmt.Printf("Verification error: key=%s, expected=%s, got=%s\n",
-											keys[i], keyStatus, resultStatus)
-									}
+								}
+							} else if actualDeletedKeys[key] {
+								if _, ok := results[key]; !ok {
+									allCorrect = false
+									incorrectCount++
 								}
 							}
 						}

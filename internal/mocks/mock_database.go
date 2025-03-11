@@ -42,63 +42,62 @@ func (m *MockQuerier) EXPECT() *MockQuerierMockRecorder {
 	return m.recorder
 }
 
-// AddL0Batch mocks base method.
-func (m *MockQuerier) AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error {
+// AddSharedRun mocks base method.
+func (m *MockQuerier) AddSharedRun(ctx context.Context, attrs *v1.Run) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddL0Batch", ctx, attrs)
+	ret := m.ctrl.Call(m, "AddSharedRun", ctx, attrs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddL0Batch indicates an expected call of AddL0Batch.
-func (mr *MockQuerierMockRecorder) AddL0Batch(ctx, attrs any) *gomock.Call {
+// AddSharedRun indicates an expected call of AddSharedRun.
+func (mr *MockQuerierMockRecorder) AddSharedRun(ctx, attrs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddL0Batch", reflect.TypeOf((*MockQuerier)(nil).AddL0Batch), ctx, attrs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddSharedRun", reflect.TypeOf((*MockQuerier)(nil).AddSharedRun), ctx, attrs)
 }
 
-// DeleteL0Batch mocks base method.
-func (m *MockQuerier) DeleteL0Batch(ctx context.Context, arg database.DeleteL0BatchParams) (database.L0Batch, error) {
+// AddWriteAheadLog mocks base method.
+func (m *MockQuerier) AddWriteAheadLog(ctx context.Context, attrs *v1.WriteAheadLog) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteL0Batch", ctx, arg)
-	ret0, _ := ret[0].(database.L0Batch)
+	ret := m.ctrl.Call(m, "AddWriteAheadLog", ctx, attrs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddWriteAheadLog indicates an expected call of AddWriteAheadLog.
+func (mr *MockQuerierMockRecorder) AddWriteAheadLog(ctx, attrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddWriteAheadLog", reflect.TypeOf((*MockQuerier)(nil).AddWriteAheadLog), ctx, attrs)
+}
+
+// DeleteSharedRuns mocks base method.
+func (m *MockQuerier) DeleteSharedRuns(ctx context.Context, seqNos []int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSharedRuns", ctx, seqNos)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// DeleteL0Batch indicates an expected call of DeleteL0Batch.
-func (mr *MockQuerierMockRecorder) DeleteL0Batch(ctx, arg any) *gomock.Call {
+// DeleteSharedRuns indicates an expected call of DeleteSharedRuns.
+func (mr *MockQuerierMockRecorder) DeleteSharedRuns(ctx, seqNos any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteL0Batch", reflect.TypeOf((*MockQuerier)(nil).DeleteL0Batch), ctx, arg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSharedRuns", reflect.TypeOf((*MockQuerier)(nil).DeleteSharedRuns), ctx, seqNos)
 }
 
-// GetL0Batches mocks base method.
-func (m *MockQuerier) GetL0Batches(ctx context.Context) ([]database.L0Batch, error) {
+// DeleteWriteAheadLogs mocks base method.
+func (m *MockQuerier) DeleteWriteAheadLogs(ctx context.Context, seqNos []int64) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetL0Batches", ctx)
-	ret0, _ := ret[0].([]database.L0Batch)
+	ret := m.ctrl.Call(m, "DeleteWriteAheadLogs", ctx, seqNos)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetL0Batches indicates an expected call of GetL0Batches.
-func (mr *MockQuerierMockRecorder) GetL0Batches(ctx any) *gomock.Call {
+// DeleteWriteAheadLogs indicates an expected call of DeleteWriteAheadLogs.
+func (mr *MockQuerierMockRecorder) DeleteWriteAheadLogs(ctx, seqNos any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0Batches", reflect.TypeOf((*MockQuerier)(nil).GetL0Batches), ctx)
-}
-
-// GetL0BatchesBySeqNo mocks base method.
-func (m *MockQuerier) GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]database.L0Batch, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetL0BatchesBySeqNo", ctx, batchSeqNos)
-	ret0, _ := ret[0].([]database.L0Batch)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetL0BatchesBySeqNo indicates an expected call of GetL0BatchesBySeqNo.
-func (mr *MockQuerierMockRecorder) GetL0BatchesBySeqNo(ctx, batchSeqNos any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetL0BatchesBySeqNo", reflect.TypeOf((*MockQuerier)(nil).GetL0BatchesBySeqNo), ctx, batchSeqNos)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWriteAheadLogs", reflect.TypeOf((*MockQuerier)(nil).DeleteWriteAheadLogs), ctx, seqNos)
 }
 
 // GetPartitions mocks base method.
@@ -116,17 +115,62 @@ func (mr *MockQuerierMockRecorder) GetPartitions(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPartitions", reflect.TypeOf((*MockQuerier)(nil).GetPartitions), ctx)
 }
 
-// UpdateL0Batch mocks base method.
-func (m *MockQuerier) UpdateL0Batch(ctx context.Context, arg database.UpdateL0BatchParams) (database.L0Batch, error) {
+// GetSharedRuns mocks base method.
+func (m *MockQuerier) GetSharedRuns(ctx context.Context) ([]database.SharedRun, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateL0Batch", ctx, arg)
-	ret0, _ := ret[0].(database.L0Batch)
+	ret := m.ctrl.Call(m, "GetSharedRuns", ctx)
+	ret0, _ := ret[0].([]database.SharedRun)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// UpdateL0Batch indicates an expected call of UpdateL0Batch.
-func (mr *MockQuerierMockRecorder) UpdateL0Batch(ctx, arg any) *gomock.Call {
+// GetSharedRuns indicates an expected call of GetSharedRuns.
+func (mr *MockQuerierMockRecorder) GetSharedRuns(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateL0Batch", reflect.TypeOf((*MockQuerier)(nil).UpdateL0Batch), ctx, arg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSharedRuns", reflect.TypeOf((*MockQuerier)(nil).GetSharedRuns), ctx)
+}
+
+// GetWriteAheadLogs mocks base method.
+func (m *MockQuerier) GetWriteAheadLogs(ctx context.Context) ([]database.WriteAheadLog, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWriteAheadLogs", ctx)
+	ret0, _ := ret[0].([]database.WriteAheadLog)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWriteAheadLogs indicates an expected call of GetWriteAheadLogs.
+func (mr *MockQuerierMockRecorder) GetWriteAheadLogs(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWriteAheadLogs", reflect.TypeOf((*MockQuerier)(nil).GetWriteAheadLogs), ctx)
+}
+
+// GetWriteAheadLogsToCompact mocks base method.
+func (m *MockQuerier) GetWriteAheadLogsToCompact(ctx context.Context) ([]database.WriteAheadLog, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWriteAheadLogsToCompact", ctx)
+	ret0, _ := ret[0].([]database.WriteAheadLog)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWriteAheadLogsToCompact indicates an expected call of GetWriteAheadLogsToCompact.
+func (mr *MockQuerierMockRecorder) GetWriteAheadLogsToCompact(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWriteAheadLogsToCompact", reflect.TypeOf((*MockQuerier)(nil).GetWriteAheadLogsToCompact), ctx)
+}
+
+// MarkWriteAheadLogsAsCompacting mocks base method.
+func (m *MockQuerier) MarkWriteAheadLogsAsCompacting(ctx context.Context, seqNos []int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkWriteAheadLogsAsCompacting", ctx, seqNos)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarkWriteAheadLogsAsCompacting indicates an expected call of MarkWriteAheadLogsAsCompacting.
+func (mr *MockQuerierMockRecorder) MarkWriteAheadLogsAsCompacting(ctx, seqNos any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkWriteAheadLogsAsCompacting", reflect.TypeOf((*MockQuerier)(nil).MarkWriteAheadLogsAsCompacting), ctx, seqNos)
 }

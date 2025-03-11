@@ -40,7 +40,7 @@ func NewHandler(
 	slog.InfoContext(ctx, "initializing worker service", "enabled", cfg.Enabled)
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, background.NewMergeL0BatchesWorker(db, objstore))
+	river.AddWorker(workers, background.NewCompactWALsWorker(db, objstore))
 	riverClient, err := river.NewClient(riverpgxv5.New(db), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {

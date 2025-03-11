@@ -235,14 +235,13 @@ func (h *handler) writeBatch(ctx context.Context, records []sstable.Record) erro
 	id := shortuuid.New()
 
 	// Write batch to object store under l0_batches directory
-	objPath := path.Join("l0_batches", id)
+	objPath := path.Join("wal", id+".sstable")
 	if err := h.store.Upload(ctx, objPath, bytes.NewReader(buf)); err != nil {
 		return fmt.Errorf("writing batch to storage: %w", err)
 	}
 
 	// Add record to database
-	if err := h.db.AddL0Batch(ctx, commonv1.L0Batch_builder{
-		State:     commonv1.L0Batch_NEW,
+	if err := h.db.AddWriteAheadLog(ctx, commonv1.WriteAheadLog_builder{
 		Path:      objPath,
 		CreatedAt: timestamppb.New(time.Now()),
 		SizeBytes: sizeBytes,

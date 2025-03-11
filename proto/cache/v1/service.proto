@@ -3,8 +3,9 @@ edition = "2023";
 package cache.v1;
 
 option go_package = "github.com/dynoinc/skyvault/gen/proto/cache/v1";
-
 option features.field_presence = IMPLICIT;
+
+import "google/protobuf/empty.proto";
 
 service CacheService {
   rpc Get(GetRequest) returns (GetResponse) {}
@@ -12,17 +13,11 @@ service CacheService {
 
 message GetRequest {
   string object_path = 1;
-  repeated string keys = 2;
+  map<string, google.protobuf.Empty> keys = 2;
 }
 
 message GetResponse {
-  repeated Result results = 1;
+  map<string, bytes> found = 1;
+  map<string, google.protobuf.Empty> deleted = 2;
 }
 
-message Result {
-  oneof status {
-    bytes found = 1;
-    bool not_found = 2;
-    bool deleted = 3;
-  }
-}

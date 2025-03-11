@@ -11,12 +11,15 @@ import (
 )
 
 type Querier interface {
-	AddL0Batch(ctx context.Context, attrs *v1.L0Batch) error
-	DeleteL0Batch(ctx context.Context, arg DeleteL0BatchParams) (L0Batch, error)
-	GetL0Batches(ctx context.Context) ([]L0Batch, error)
-	GetL0BatchesBySeqNo(ctx context.Context, batchSeqNos []int64) ([]L0Batch, error)
+	AddSharedRun(ctx context.Context, attrs *v1.Run) error
+	AddWriteAheadLog(ctx context.Context, attrs *v1.WriteAheadLog) error
+	DeleteSharedRuns(ctx context.Context, seqNos []int64) (bool, error)
+	DeleteWriteAheadLogs(ctx context.Context, seqNos []int64) (bool, error)
 	GetPartitions(ctx context.Context) ([]Partition, error)
-	UpdateL0Batch(ctx context.Context, arg UpdateL0BatchParams) (L0Batch, error)
+	GetSharedRuns(ctx context.Context) ([]SharedRun, error)
+	GetWriteAheadLogs(ctx context.Context) ([]WriteAheadLog, error)
+	GetWriteAheadLogsToCompact(ctx context.Context) ([]WriteAheadLog, error)
+	MarkWriteAheadLogsAsCompacting(ctx context.Context, seqNos []int64) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)
