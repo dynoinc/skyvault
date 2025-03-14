@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "skyvault.fullname" . }}-config
+  labels:
+    {{- include "skyvault.labels" . | nindent 4 }}
+data:
+  # Database configuration
+  SKYVAULT_DATABASE_URL: {{ .Values.database.url | quote }}
+  
+  # Storage configuration
+  SKYVAULT_STORAGE_URL: {{ .Values.storage.url | quote }}
+  
+  {{- if eq .Values.storage.type "s3" }}
+  # S3 credentials and configuration
+  AWS_ACCESS_KEY_ID: {{ .Values.storage.s3.access_key | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ .Values.storage.s3.secret_key | quote }}
+  AWS_REGION: {{ .Values.storage.s3.region | quote }}
+  AWS_S3_FORCE_PATH_STYLE: "true"
+  {{- end }}
+  
+  # Batcher configuration
+  {{- if .Values.batcher.enabled }}
+  SKYVAULT_BATCHER_ENABLED: "true"
+  SKYVAULT_BATCHER_MAX_BATCH_BYTES: {{ .Values.batcher.maxBatchBytes | quote }}
+  SKYVAULT_BATCHER_MAX_BATCH_AGE: {{ .Values.batcher.maxBatchAge | quote }}
+  SKYVAULT_BATCHER_MAX_CONCURRENT: {{ .Values.batcher.maxConcurrent | quote }}
+  {{- end }}
+  
+  # Cache configuration
+  {{- if .Values.cache.enabled }}
+  SKYVAULT_CACHE_ENABLED: "true"
+  SKYVAULT_CACHE_MAX_SIZE_BYTES: {{ .Values.cache.maxSizeBytes | quote }}
+  SKYVAULT_CACHE_INSTANCE: {{ .Values.cache.instance | quote }}
+  {{- end }}
+  
+  # Index configuration
+  {{- if .Values.index.enabled }}
+  SKYVAULT_INDEX_ENABLED: "true"
+  SKYVAULT_INDEX_INSTANCE: {{ .Values.index.instance | quote }}
+  SKYVAULT_INDEX_NAMESPACE: {{ .Values.index.namespace | quote }}
+  SKYVAULT_INDEX_CACHE_PORT: {{ .Values.cache.port | quote }}
+  {{- end }}
+  
+  # Orchestrator configuration
+  {{- if .Values.orchestrator.enabled }}
+  SKYVAULT_ORCHESTRATOR_ENABLED: "true"
+  {{- end }}
+  
+  # Worker configuration
+  {{- if .Values.worker.enabled }}
+  SKYVAULT_WORKER_ENABLED: "true"
+  {{- end }} 

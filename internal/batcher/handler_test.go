@@ -13,15 +13,13 @@ import (
 	commonv1 "github.com/dynoinc/skyvault/gen/proto/common/v1"
 	"github.com/dynoinc/skyvault/internal/database"
 	"github.com/dynoinc/skyvault/internal/mocks"
-	"github.com/dynoinc/skyvault/internal/storage"
 )
 
 func newTestHandler(t *testing.T) (*handler, *mocks.MockQuerier, objstore.Bucket) {
 	ctx := t.Context()
 	ctrl := gomock.NewController(t)
 	db := mocks.NewMockQuerier(ctrl)
-	store, err := storage.New(ctx, "inmemory://")
-	require.NoError(t, err)
+	store := objstore.NewInMemBucket()
 
 	handler := NewHandler(ctx, Config{
 		Enabled:       true,

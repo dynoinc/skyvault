@@ -21,6 +21,17 @@ spec:
       serviceAccountName: {{ include "skyvault.fullname" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        # Mount ConfigMap as a volume if needed for file-based configuration
+        - name: config-volume
+          configMap:
+            name: {{ include "skyvault.fullname" . }}-config
+        {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
+        - name: source-code
+          hostPath:
+            path: {{ .Values.development.sourceCodeMount.hostPath }}
+            type: Directory
+        {{- end }}
       containers:
         - name: skyvault
           securityContext:
@@ -31,28 +42,20 @@ spec:
           ports:
             - containerPort: {{ .Values.orchestrator.port }}
               protocol: TCP
+          # Use the entire ConfigMap as environment variables
+          envFrom:
+            - configMapRef:
+                name: {{ include "skyvault.fullname" . }}-config
+          # Add service-specific environment variables that aren't in the ConfigMap
           env:
             - name: SKYVAULT_ADDR
               value: "0.0.0.0:{{ .Values.orchestrator.port }}"
-            - name: SKYVAULT_DATABASE_URL
-              value: "{{ .Values.database.url }}"
-            - name: SKYVAULT_STORAGE_URL
-              value: "{{ .Values.storage.url }}"
-            - name: SKYVAULT_ORCHESTRATOR_ENABLED
-              value: "true"
-            {{- if eq .Values.storage.type "s3" }}
-            - name: AWS_ACCESS_KEY_ID
-              value: "{{ .Values.storage.s3.access_key }}"
-            - name: AWS_SECRET_ACCESS_KEY
-              value: "{{ .Values.storage.s3.secret_key }}"
-            - name: AWS_REGION
-              value: "{{ .Values.storage.s3.region }}"
-            - name: S3_ENDPOINT
-              value: "{{ .Values.storage.s3.endpoint }}"
-            - name: S3_USE_SSL
-              value: "{{ .Values.storage.s3.secure }}"
-            - name: S3_BUCKET_NAME
-              value: "{{ .Values.storage.s3.bucket }}"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/skyvault/config
+            {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
+            - name: source-code
+              mountPath: /app/src
             {{- end }}
           livenessProbe:
             grpc:
@@ -66,16 +69,4 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.orchestrator.resources | nindent 12 }}
-          {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
-          volumeMounts:
-            - name: source-code
-              mountPath: /app/src
-          {{- end }}
-      {{- if and .Values.development.enabled .Values.development.sourceCodeMount.enabled }}
-      volumes:
-        - name: source-code
-          hostPath:
-            path: {{ .Values.development.sourceCodeMount.hostPath }}
-            type: Directory
-      {{- end }}
 {{- end }} 
