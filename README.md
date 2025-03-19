@@ -45,6 +45,25 @@ SkyVault's architecture is designed for high scalability and performance:
 2. Run `just k8s-dev` to start everything in k8s
 3. Run `just k8s-stress` to send some load
 
+### TODOs
+- Use k8s jobs instead of riverqueue/workers.
+- Add concept of a table
+- Add TTL support
+- Add PV to cache and persist objects across cache deployments
+- Add singleflight to cache to avoid duplicate requests to download objects
+- Add hedging from index -> cache to avoid the long tail
+- Introduce concept of a "Run"
+  - A sorted list of sstables
+  - Holds 128MB of data 
+  - A meta index in database?
+- Update SSTable (4MB each) format with
+  - Blocks (64kb)
+  - Fence keys
+  - Bloom filters
+  - Avoid de-serialization to lookup indexes
+  - Compression?
+  - SIMD search compatible?
+
 ## Contributing
 
 Contributions to SkyVault are welcome! Here's how you can contribute:
