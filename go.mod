@@ -1,6 +1,6 @@
 module github.com/dynoinc/skyvault
 
-go 1.24.1
+go 1.24.2
 
 tool (
 	github.com/bufbuild/buf/cmd/buf
