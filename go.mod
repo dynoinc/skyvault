@@ -38,7 +38,7 @@ require (
 	go.opentelemetry.io/otel/exporters/prometheus v0.57.0
 	go.opentelemetry.io/otel/sdk/metric v1.35.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	google.golang.org/protobuf v1.36.5
 	k8s.io/api v0.32.2
 	k8s.io/apimachinery v0.32.2
